@@ -59,3 +59,17 @@ calc_menu_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True,
 )
 
+ai_menu_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="📷 Распознать блюдо"),
+            KeyboardButton(text="🍲 Создать рецепт"),
+        ],
+        [
+            KeyboardButton(text="📋 Меню на день"),
+            KeyboardButton(text="⬅️ Назад"),
+        ],
+    ],
+    resize_keyboard=True,
+)
+

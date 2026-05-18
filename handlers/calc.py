@@ -6,12 +6,14 @@ from states import CalcForm
 
 from db.repositories import (
     get_user_profile,
-    create_user_profile, update_user_profile,
+    create_user_profile,
+    update_user_profile,
 )
 from keyboards import (
     gender_keyboard,
     activity_keyboard,
-    target_keyboard, calc_menu_keyboard, main_menu_keyboard,
+    target_keyboard, calc_menu_keyboard,
+    main_menu_keyboard,
 )
 from services.message_builder import (
     build_calc_result_message,
@@ -40,6 +42,17 @@ async def calc_from_menu_handler(
     state: FSMContext,
 ) -> None:
     await start_calc_flow(message, state, mode="create")
+
+@router.message(F.text == "🔄 Пересчитать")
+async def recalc_from_menu_handler(
+    message: Message,
+    state: FSMContext,
+) -> None:
+    await start_calc_flow(
+        message,
+        state,
+        mode="update",
+    )
 
 @router.message(F.text == "⬅️ Назад")
 async def back_to_main_menu_handler(
@@ -238,7 +251,8 @@ async def target_callback_handler(
         build_calc_result_message(
             profile=profile,
             results=results
-        )
+        ),
+        reply_markup=calc_menu_keyboard
     )
     await state.clear()
     await callback.answer()

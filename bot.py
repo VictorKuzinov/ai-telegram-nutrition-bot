@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from db.database import init_db
 from handlers.start import router as start_router
 from handlers.calc import router as calc_router
+from handlers.ai import router as ai_router
 
 load_dotenv()
 
@@ -20,6 +21,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 dp = Dispatcher()
 dp.include_router(start_router)
 dp.include_router(calc_router)
+dp.include_router(ai_router)
 
 
 async def main() -> None:
