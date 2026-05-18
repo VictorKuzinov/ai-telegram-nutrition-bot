@@ -1,4 +1,5 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
 gender_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
@@ -19,12 +20,6 @@ activity_keyboard = InlineKeyboardMarkup(
     ]
 )
 
-# "🪑 Сижу почти весь день"
-# "🚶 Хожу / лёгкие тренировки"
-# "🏃 Тренировки 3-5 раз в неделю"
-# "🏋️ Интенсивные тренировки"
-# "🔥 Спорт или тяжёлый физический труд"
-
 target_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
         [InlineKeyboardButton(text="Похудение", callback_data="target:loss")],
@@ -32,3 +27,35 @@ target_keyboard = InlineKeyboardMarkup(
         [InlineKeyboardButton(text="Набор массы", callback_data="target:gain")],
     ]
 )
+
+start_calc_keyboard = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="🚀 Начать расчёт",callback_data="start_calc")],
+    ]
+)
+
+main_menu_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="📊 Расчёты"),
+            KeyboardButton(text="🤖 AI функции"),
+        ],
+        [
+            KeyboardButton(text="👤 Профиль"),
+            KeyboardButton(text="ℹ️ Помощь"),
+        ],
+    ],
+    resize_keyboard=True,
+)
+
+calc_menu_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="📊 Рассчитать БЖУ"),
+            KeyboardButton(text="🔄 Пересчитать"),
+            KeyboardButton(text="⬅️ Назад"),
+        ],
+    ],
+    resize_keyboard=True,
+)
+

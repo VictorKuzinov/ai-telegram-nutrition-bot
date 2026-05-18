@@ -2,40 +2,106 @@ from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
+from states import CalcForm
+
+from db.repositories import (
+    get_user_profile,
+    create_user_profile, update_user_profile,
+)
 from keyboards import (
     gender_keyboard,
     activity_keyboard,
-    target_keyboard,
+    target_keyboard, calc_menu_keyboard, main_menu_keyboard,
 )
-from nutrition.nutrition_calc import (
-    calc_bmr,
-    calc_base_calories,
-    calc_energy_total,
-    ACTIVITY_LEVELS,
-    TARGETS, calculate_bju,
+from services.message_builder import (
+    build_calc_result_message,
+    calculate_profile_results,
 )
-from states import CalcForm
-
 from validators import (
     validate_age,
     validate_height,
     validate_weight,
 )
 
-
 router = Router()
+
+@router.message(F.text == "📊 Расчёты")
+async def calc_menu_handler(
+    message: Message,
+) -> None:
+    await message.answer(
+        f"Выберите действие:",
+        reply_markup=calc_menu_keyboard,
+    )
+
+@router.message(F.text == "📊 Рассчитать БЖУ")
+async def calc_from_menu_handler(
+    message: Message,
+    state: FSMContext,
+) -> None:
+    await start_calc_flow(message, state, mode="create")
+
+@router.message(F.text == "⬅️ Назад")
+async def back_to_main_menu_handler(
+    message: Message,
+) -> None:
+
+    await message.answer(
+        "Главное меню:",
+        reply_markup=main_menu_keyboard,
+    )
+
+async def start_calc_flow(
+        message: Message,
+        state: FSMContext,
+        mode: str,
+) -> None:
+    telegram_id = message.from_user.id
+    await state.update_data(mode=mode)
+    profile = get_user_profile(telegram_id)
+    if mode == "create" and profile is not None:
+        results = calculate_profile_results(profile)
+        await message.answer(
+            build_calc_result_message(
+                profile, results
+            )
+        )
+        return
+
+    await state.set_state(CalcForm.gender)
+    await message.answer(
+        "Выберите пол:",
+        reply_markup=gender_keyboard
+    )
 
 @router.message(Command('calc'))
 async def calc_handler(
         message: Message,
-        state: FSMContext,
+        state: FSMContext
 )-> None:
 
-    await state.set_state(CalcForm.gender)
-    await message.answer("Выберите пол: ",
-    reply_markup = gender_keyboard)
+    await start_calc_flow(
+        message,
+        state,
+        mode="create"
+    )
 
-@router.callback_query(CalcForm.gender, F.data.startswith("gender:"))
+@router.message(Command('recalc'))
+async def recalc_handler(
+    message: Message,
+    state: FSMContext,
+) -> None:
+
+    await start_calc_flow(
+        message,
+        state,
+        mode="update",
+    )
+
+@router.callback_query(
+    CalcForm.gender,
+    F.data.startswith("gender:")
+)
 async def gender_callback_handler(
     callback: CallbackQuery,
     state: FSMContext,
@@ -134,47 +200,45 @@ async def target_callback_handler(
 
     data = await state.get_data()
 
-    bmr = calc_bmr(
-        gender=data["gender"],
-        weight=data["weight"],
-        height=data["height"],
-        age=data["age"],
-    )
+    profile_data = {
+        "telegram_id": callback.from_user.id,
+        "full_name": callback.from_user.full_name,
+        "gender": data["gender"],
+        "age": data["age"],
+        "height": data["height"],
+        "weight": data["weight"],
+        "activity": data["activity"],
+        "target": data["target"],
+    }
 
-    calories = round(calc_base_calories(
-        bmr,
-        activity_level=data["activity"],)
-    )
+    if data["mode"] == "create":
+        profile = get_user_profile(callback.from_user.id)
 
-    total_energy = calc_energy_total(
-        calories,
-        target=data["target"],
-    )
+        if profile is None:
+            profile = create_user_profile(profile_data)
+    elif  data["mode"] == "update":
+        profile = update_user_profile(
+            telegram_id=callback.from_user.id,
+            updates=profile_data)
+    else:
+        await callback.message.answer("Неизвестный режим расчёта.")
+        await state.clear()
+        await callback.answer()
+        return
 
-    bju = calculate_bju(
-        weight=data["weight"],
-        total_energy=total_energy,
-        goal=data["target"]
-    )
+    if profile is None:
+        await callback.message.answer("Профиль не найден.")
+        await state.clear()
+        await callback.answer()
+        return
 
-    gender_title = (
-        "Мужчина"
-        if data["gender"] == "M"
-        else "Женщина"
-    )
+    results = calculate_profile_results(profile)
 
     await callback.message.answer(
-        f"📊 Ваш результат:\n\n"
-        f"👤 Пол: {gender_title}\n"
-        f"🔥 Основной обмен: {round(bmr)} ккал\n"
-        f"⚡ Суточная норма: {round(calories)} ккал\n"
-        f"🎯 Цель: {TARGETS[data['target']]['title']}\n"
-        f"🏃 Активность: {ACTIVITY_LEVELS[data['activity']]['title']}\n"
-        f"🍽 Рекомендуемая калорийность: <b>{total_energy}</b> ккал\n\n"
-        f"🥩 Белки: {bju['protein']} г\n"
-        f"🧈 Жиры: {bju['fat']} г\n"
-        f"🍞 Углеводы: {bju['carbs']} г"
+        build_calc_result_message(
+            profile=profile,
+            results=results
+        )
     )
-
     await state.clear()
     await callback.answer()

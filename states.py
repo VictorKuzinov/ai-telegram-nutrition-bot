@@ -8,3 +8,4 @@ class CalcForm(StatesGroup):
     weight = State()
     activity = State()
     target = State()
+    mode = State()
