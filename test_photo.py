@@ -6,7 +6,7 @@ from ai.gigachat_photo import (
 )
 from services.message_ai_parser import parse_ingredients
 
-image_path = Path("picture/uploads/test.jpg")
+image_path = Path("picture/uploads/Плов.jpg")
 
 print("Файл существует:", image_path.exists())
 
