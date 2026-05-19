@@ -9,3 +9,9 @@ class CalcForm(StatesGroup):
     activity = State()
     target = State()
     mode = State()
+
+class PhotoForm(StatesGroup):
+    waiting_photo = State()
+    confirm_ingredient = State()
+    edit_ingredient_name = State()
+    waiting_weight = State()

@@ -6,5 +6,5 @@ __pycache__/
 *sqlite3
 old/
 token.json
-picture/temp*
+picture/uploads
 .pytest_cache

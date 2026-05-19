@@ -1,5 +1,9 @@
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+)
 
 gender_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
@@ -73,3 +77,23 @@ ai_menu_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True,
 )
 
+confirm_food_keyboard = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="✅ Да",
+                callback_data="confirm_food_yes",
+            ),
+            InlineKeyboardButton(
+                text="✏️ Исправить",
+                callback_data="confirm_food_no",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="❌ Отменить",
+                callback_data="confirm_food_cancel",
+            ),
+        ],
+    ]
+)
