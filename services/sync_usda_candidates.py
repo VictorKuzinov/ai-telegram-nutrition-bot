@@ -5,8 +5,7 @@ import requests
 import dotenv
 from pathlib import Path
 
-from app_old import load_cache, cache_path, DATA_DIR
-
+from nutrition.nutrition_cache import load_cache, DATA_DIR, cache_path
 dotenv.load_dotenv()
 
 API_KEY = os.getenv("USDA_API_KEY")

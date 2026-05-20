@@ -90,7 +90,7 @@ async def process_food_photo_handler(
     )
 
     ingredients_text = "\n".join(
-        f"• {ingredient['name']}"
+        f"• {ingredient[0]}"
         for ingredient in ingredients
     )
 

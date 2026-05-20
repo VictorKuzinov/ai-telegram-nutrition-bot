@@ -240,7 +240,10 @@ def calculate_nutrition(parsed_ingredients: ParsedIngredients) -> tuple[Nutritio
     total_carbs = 0.0
     total_weight = 0.0
 
-    for name, grams in parsed_ingredients:
+    for ingredient in parsed_ingredients:
+        name = ingredient["name"]
+        grams = ingredient["weight"]
+
         item = find_ingredient(name)
 
         if item:
@@ -279,9 +282,8 @@ def footer_recipe(total: NutritionTotal) -> str:
     """
     Формирует текстовый блок с пищевой ценностью блюда.
     """
-    return f""" 
-Пищевая ценность (на весь рецепт):
-🍽 <b>Пищевая ценность (на весь рецепт)</b>
+    return f"""
+🍽 <b>Пищевая ценность (на весь рецепт):</b>
 
 🔥 Калорийность: {total["kcal"]} ккал
 🥩 Белки: {total["protein"]} г

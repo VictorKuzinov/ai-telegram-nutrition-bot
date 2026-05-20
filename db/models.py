@@ -42,7 +42,7 @@ class FoodLog(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("user_profile.id"),
+        ForeignKey("user_profiles.id"),
         nullable=False,
         index=True,
     )

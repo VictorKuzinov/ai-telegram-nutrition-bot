@@ -1,6 +1,6 @@
 import re
 
-ParsedIngredients = list[tuple[str, float]]
+ParsedIngredients = list[tuple[str, str | float]]
 # ParsedIngredient = dict[str, str | float]
 # ParsedIngredients = list[ParsedIngredient]
 
