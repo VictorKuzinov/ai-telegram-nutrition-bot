@@ -5,9 +5,18 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
 from ai.gigachat_photo import get_access_token, call_gigachat_vision
+from db.repositories import create_food_log, get_user_profile
 from keyboards import (
     ai_menu_keyboard,
     confirm_food_keyboard,
+)
+from nutrition.nutrition_calc import (
+    calculate_nutrition,
+    footer_recipe,
+)
+from nutrition.nutrition_cache import (
+    cache_path,
+    save_or_increment_cache,
 )
 from services.message_ai_parser import parse_ingredients
 from states import PhotoForm
@@ -168,10 +177,48 @@ async def weight_handler(
         total_weight=weight,
     )
 
+    parsed_ingredients = [
+        {
+            "name": food_title,
+            "weight": weight,
+        }
+    ]
+
+    total, not_found = calculate_nutrition(parsed_ingredients)
+    if not_found:
+        save_or_increment_cache(
+            cache_path,
+            not_found,
+        )
+
+    profile = get_user_profile(message.from_user.id)
+
+    if profile is None:
+        await message.answer("Профиль пользователя не найден.")
+        await state.clear()
+        return
+
+    food_log_data = {
+        "user_id": profile.id,
+        "food_name": food_title,
+        "weight": weight,
+        "kcal": total["kcal"],
+        "protein": total["protein"],
+        "fat": total["fat"],
+        "carbs": total["carbs"],
+        "source": "photo",
+    }
+
+    create_food_log(food_log_data)
+
     await message.answer(
         f"✅ Блюдо сохранено:\n\n"
         f"🍽 {food_title}\n"
         f"⚖️ Вес: {weight} г"
+    )
+
+    await message.answer(
+        footer_recipe(total)
     )
 
     await state.clear()

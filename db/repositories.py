@@ -2,7 +2,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from db.database import SessionLocal
-from db.models import UserProfile
+from db.models import UserProfile, FoodLog
+
 
 def create_user_profile(data: dict) -> UserProfile:
     """
@@ -65,3 +66,22 @@ def update_user_profile(
         raise
     finally:
         session.close()
+
+def create_food_log(data: dict) -> FoodLog:
+    session = SessionLocal()
+
+    try:
+        food = FoodLog(**data)
+        session.add(food)
+        session.commit()
+        session.refresh(food)
+        return food
+    except SQLAlchemyError:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+def get_today_food_logs(telegram_id: int):
+    pass
