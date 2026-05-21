@@ -46,7 +46,8 @@ main_menu_keyboard = ReplyKeyboardMarkup(
         ],
         [
             KeyboardButton(text="👤 Профиль"),
-            KeyboardButton(text="ℹ️ Помощь"),
+            KeyboardButton(text="📖 Дневник"),
+
         ],
     ],
     resize_keyboard=True,
@@ -85,7 +86,7 @@ confirm_food_keyboard = InlineKeyboardMarkup(
                 callback_data="confirm_food_yes",
             ),
             InlineKeyboardButton(
-                text="✏️ Исправить",
+                text="✏️Исправить",
                 callback_data="confirm_food_no",
             ),
         ],
@@ -96,4 +97,18 @@ confirm_food_keyboard = InlineKeyboardMarkup(
             ),
         ],
     ]
+)
+
+diary_menu_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="🍽 Сегодня"),
+            KeyboardButton(text="🔥 Остаток"),
+        ],
+        [
+            KeyboardButton(text="📅 История"),
+            KeyboardButton(text="⬅️ Назад"),
+        ],
+    ],
+    resize_keyboard=True,
 )

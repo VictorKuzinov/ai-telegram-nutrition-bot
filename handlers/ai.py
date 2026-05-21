@@ -190,36 +190,40 @@ async def weight_handler(
             cache_path,
             not_found,
         )
+        await message.answer(
+            "⚠️ Блюдо пока отсутствует в базе ингредиентов.\n"
+            "Оно добавлено в очередь на обработку."
+        )
+    else:
+        profile = get_user_profile(message.from_user.id)
 
-    profile = get_user_profile(message.from_user.id)
+        if profile is None:
+            await message.answer("Профиль пользователя не найден.")
+            await state.clear()
+            return
 
-    if profile is None:
-        await message.answer("Профиль пользователя не найден.")
-        await state.clear()
-        return
+        food_log_data = {
+            "user_id": profile.id,
+            "food_name": food_title,
+            "weight": weight,
+            "kcal": total["kcal"],
+            "protein": total["protein"],
+            "fat": total["fat"],
+            "carbs": total["carbs"],
+            "source": "photo",
+        }
 
-    food_log_data = {
-        "user_id": profile.id,
-        "food_name": food_title,
-        "weight": weight,
-        "kcal": total["kcal"],
-        "protein": total["protein"],
-        "fat": total["fat"],
-        "carbs": total["carbs"],
-        "source": "photo",
-    }
+        create_food_log(food_log_data)
 
-    create_food_log(food_log_data)
+        await message.answer(
+            f"✅ Блюдо сохранено:\n\n"
+            f"🍽 {food_title}\n"
+            f"⚖️ Вес: {weight} г"
+        )
 
-    await message.answer(
-        f"✅ Блюдо сохранено:\n\n"
-        f"🍽 {food_title}\n"
-        f"⚖️ Вес: {weight} г"
-    )
-
-    await message.answer(
-        footer_recipe(total)
-    )
+        await message.answer(
+            footer_recipe(total)
+        )
 
     await state.clear()
 

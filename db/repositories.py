@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -82,6 +84,50 @@ def create_food_log(data: dict) -> FoodLog:
     finally:
         session.close()
 
-
 def get_today_food_logs(telegram_id: int):
-    pass
+    session = SessionLocal()
+    try:
+        profile = get_user_profile(telegram_id=telegram_id)
+        if profile is None:
+            return []
+
+        start_of_day = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        start_next_day = start_of_day + timedelta(days=1)
+
+        result = (
+            select(FoodLog)
+            .where(FoodLog.user_id == profile.id)
+            .where(FoodLog.created_at >= start_of_day)
+            .where(FoodLog.created_at < start_next_day)
+        )
+        foods = session.execute(result).scalars().all()
+        return foods
+    except SQLAlchemyError:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+def get_food_logs_for_period(telegram_id, days=7) -> dict:
+    session = SessionLocal()
+    try:
+        profile = get_user_profile(telegram_id=telegram_id)
+        if profile is None:
+            return []
+
+        start_of_day = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        start_next_day = start_of_day - timedelta(days=days)
+        result = (
+            select(FoodLog)
+            .where(FoodLog.user_id == profile.id)
+            .where(FoodLog.created_at >= start_of_day)
+            .where(FoodLog.created_at < start_next_day)
+            .group_by(FoodLog.created_at)
+        )
+        foods = session.execute(result).scalars().all()
+        return foods
+    except SQLAlchemyError:
+        session.rollback()
+        raise
+    finally:
+        session.close()

@@ -44,8 +44,8 @@ def fetch_usda_data(query: str, api_key = API_KEY) -> dict | None:
     if response.ok:
         data = response.json()
         foods = data.get("foods", [])
-        with open(query, "w", encoding="utf-8") as f:
-            json.dump(foods, f, ensure_ascii=False, indent=2)
+        # with open(query, "w", encoding="utf-8") as f:
+        #     json.dump(foods, f, ensure_ascii=False, indent=2)
         if not foods:
             return None
         selected_food = foods[0]
@@ -82,8 +82,8 @@ def transform_to_internal(record, data_usda) -> dict|None:
         "id": record["name_en"].lower().replace( " ", "_"),
         "name_ru": record["name_ru"],
         "name_en": record["name_en"],
-        "aliases_ru": aliases_ru.append(record["aliases_ru"]),
-        "aliases_en": aliases_en.append(record["aliases_en"]),
+        "aliases_ru": aliases_ru.append(record["name_ru"]),
+        "aliases_en": aliases_en.append(record["name_en"]),
         "kcal_per_100g": data_usda["kcal_per_100g"],
         "protein_per_100g": data_usda["protein_per_100g"],
         "fat_per_100g": data_usda["fat_per_100g"],
