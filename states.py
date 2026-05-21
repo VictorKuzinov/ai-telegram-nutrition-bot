@@ -15,3 +15,9 @@ class PhotoForm(StatesGroup):
     confirm_ingredient = State()
     edit_ingredient_name = State()
     waiting_weight = State()
+
+class RecipeForm(StatesGroup):
+    waiting_recipe = State()
+    waiting_persons = State()
+    waiting_kcal = State()
+    waiting_wishes = State()

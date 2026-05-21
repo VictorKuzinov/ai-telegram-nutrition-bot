@@ -10,18 +10,17 @@ from dotenv import load_dotenv
 from config_ai import (
     CONFIG,
     choice_menu,
-    reserve_model
+    reserve_model, user_message
 )
 from gigachat_photo import (
     call_gigachat_vision,
     download_image,
     get_access_token,
 )
+
 from nutrition.nutrition_cache import save_or_increment_cache, cache_path
 from nutrition.nutrition_calc import (
     calculate_nutrition,
-    normalize_name,
-    IngredientRecord,
     footer_recipe,
 )
 from services.message_ai_parser import parse_ingredients
@@ -387,6 +386,33 @@ def handle_photo_mode(image_url: str) -> str:
     return answer
 
 
+def generate_user_prompt(data: dict) -> str:
+    user_prompt = f"""
+        Ты нутрициолог и повар.
+
+        Составь рецепт блюда.
+
+        Основной запрос:
+        {data["recipe"]}
+
+        Количество человек:
+        {data["persons"]}
+
+        Ограничение по калориям:
+        {data["kcal"]}
+
+        Дополнительные пожелания:
+        {data["wishes"]}
+
+        Требования:
+        - краткий формат;
+        - список ингредиентов;
+        - пошаговое приготовление;
+        - примерная калорийность;
+        - без длинных вступлений.
+    """
+    return user_prompt
+
 def main() -> None:
     """
     Точка входа для локальной отладки режимов приложения.
@@ -394,9 +420,15 @@ def main() -> None:
     В Telegram-боте вместо этой функции будут использоваться обработчики сообщений.
     """
     mode = "recipe"
+    data={}
 
     if mode == "recipe":
-        user_message = "Составь рецепт на обед."
+        data["recipe"] = "Хочу приготовить блюдо из курицы"
+        data["persons"] = "на 6 человек"
+        data["kcal"] = "на 1000 килокалорий"
+        data["wishes"] = "Хочу средиземноморскую кухню на обед"
+        user_message = generate_user_prompt(data)
+        print(user_message)
         ai_text = ask_ai(user_message=user_message, mode=mode)
         result_text = handle_recipe_mode(ai_text)
 

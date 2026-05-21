@@ -1,7 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import Message
 
-from db.repositories import get_today_food_logs, get_user_profile
+from db.repositories import get_today_food_logs, get_user_profile, get_food_logs_for_period
 from keyboards import (
     diary_menu_keyboard,
     main_menu_keyboard,
@@ -97,4 +97,20 @@ async def remainder_kcal_handler(
 @router.message(F.text == "📅 История")
 async def history_day_handler(    message: Message
 ) -> None:
-    pass
+    await message.answer("📅 История питания 7 дней:")
+    telegram_id = message.from_user.id
+    profile = get_user_profile(message.from_user.id)
+    if profile is None:
+        await message.answer("Профиль пользователя не найден.")
+        return
+    history = get_food_logs_for_period(telegram_id, days=7)
+    if len(history) == 0:
+        await message.answer("У вас еще нет истории питания.")
+        return
+    answer = ""
+    for date, total_kcal in history:
+        answer += (
+            f"📌 {date} | "
+            f" 🔥 {round(total_kcal)} ккал\n\n"
+        )
+    await message.answer(answer)

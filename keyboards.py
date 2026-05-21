@@ -86,13 +86,13 @@ confirm_food_keyboard = InlineKeyboardMarkup(
                 callback_data="confirm_food_yes",
             ),
             InlineKeyboardButton(
-                text="✏️Исправить",
+                text="✏️ Правка",
                 callback_data="confirm_food_no",
             ),
         ],
         [
             InlineKeyboardButton(
-                text="❌ Отменить",
+                text="❌ Отмена",
                 callback_data="confirm_food_cancel",
             ),
         ],

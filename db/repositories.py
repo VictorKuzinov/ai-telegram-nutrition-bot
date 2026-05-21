@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import SQLAlchemyError
 
 from db.database import SessionLocal
@@ -108,23 +108,26 @@ def get_today_food_logs(telegram_id: int):
     finally:
         session.close()
 
-def get_food_logs_for_period(telegram_id, days=7) -> dict:
+def get_food_logs_for_period(telegram_id, days=7) -> list:
     session = SessionLocal()
     try:
         profile = get_user_profile(telegram_id=telegram_id)
         if profile is None:
             return []
 
-        start_of_day = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        start_next_day = start_of_day - timedelta(days=days)
+        start_period = datetime.now() - timedelta(days=days)
+
         result = (
-            select(FoodLog)
+            select(
+                func.strftime('%d.%m.%Y', FoodLog.created_at).label("date"),
+                func.sum(FoodLog.kcal).label("total_kcal")
+            )
             .where(FoodLog.user_id == profile.id)
-            .where(FoodLog.created_at >= start_of_day)
-            .where(FoodLog.created_at < start_next_day)
-            .group_by(FoodLog.created_at)
+            .where(FoodLog.created_at >= start_period)
+            .group_by(func.date(FoodLog.created_at))
+            .order_by(func.date(FoodLog.created_at).desc())
         )
-        foods = session.execute(result).scalars().all()
+        foods  = session.execute(result).all()
         return foods
     except SQLAlchemyError:
         session.rollback()
