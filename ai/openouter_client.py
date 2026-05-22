@@ -12,7 +12,7 @@ from config_ai import (
     choice_menu,
     reserve_model, user_message
 )
-from gigachat_photo import (
+from ai.gigachat_photo import (
     call_gigachat_vision,
     download_image,
     get_access_token,
@@ -430,6 +430,7 @@ def main() -> None:
         user_message = generate_user_prompt(data)
         print(user_message)
         ai_text = ask_ai(user_message=user_message, mode=mode)
+        print(ai_text)
         result_text = handle_recipe_mode(ai_text)
 
     elif mode == "menu":
