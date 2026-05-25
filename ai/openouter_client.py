@@ -1,29 +1,33 @@
-import json
 import os
-import re
 from pathlib import Path
 from typing import Any
-
 import requests
+
 from dotenv import load_dotenv
 
 from config_ai import (
     CONFIG,
     choice_menu,
-    reserve_model, user_message
+    reserve_model,
 )
 from ai.gigachat import (
     call_gigachat_vision,
     download_image,
     get_access_token,
 )
-
-from nutrition.nutrition_cache import save_or_increment_cache, cache_path
+from nutrition.nutrition_cache import (
+    save_or_increment_cache,
+    cache_path,
+)
 from nutrition.nutrition_calc import (
     calculate_nutrition,
     footer_recipe,
 )
 from services.message_ai_parser import parse_ingredients
+from services.message_builder import (
+    filter_user_message,
+    clean_vision_output,
+)
 
 load_dotenv()
 
@@ -31,7 +35,6 @@ API_KEY = os.getenv("OPENROUTER_API_KEY")
 INDEX: dict[str, dict[str, Any]] = {}
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
-# cache_path = DATA_DIR / "missing_ingredients.json"
 
 def call_api(
     model: str,
@@ -126,41 +129,6 @@ def send_request(
 
     return content
 
-
-def filter_user_message(text: str) -> tuple[bool, str]:
-    """
-    Выполняет базовую фильтрацию пользовательского сообщения.
-
-    Отсекает пустые, слишком короткие, бессмысленные сообщения
-    и простые попытки prompt injection.
-
-    Возвращает:
-    - True и пустую строку, если сообщение допустимо;
-    - False и текст ответа пользователю, если сообщение нужно отклонить.
-    """
-    text_lower = text.lower().strip()
-
-    if not text_lower or len(text_lower) < 3:
-        return False, "Пожалуйста, задайте вопрос по питанию."
-
-    if len(set(text_lower)) < 3:
-        return False, "Пожалуйста, задайте вопрос по питанию."
-
-    suspicious_phrases = [
-        "игнорируй инструкции",
-        "забудь инструкции",
-        "ты теперь",
-        "system prompt",
-        "act as",
-        "ignore previous",
-    ]
-
-    if any(phrase in text_lower for phrase in suspicious_phrases):
-        return False, "Я отвечаю только на вопросы по питанию."
-
-    return True, ""
-
-
 def ask_ai(user_message: str, mode: str = "chat") -> str:
     """
     Получает настройки режима из CONFIG и отправляет запрос в текстовую модель.
@@ -189,109 +157,6 @@ def ask_ai(user_message: str, mode: str = "chat") -> str:
         )
     except Exception as fallback_error:
         return f"Ошибка: {str(fallback_error)}"
-
-# def load_cache(path: Path) -> list[IngredientRecord]:
-#     """
-#     Загружает кэш не найденных ингредиентов.
-#
-#     Если файл отсутствует или повреждён, возвращает пустой список.
-#     """
-#     try:
-#         with open(path, "r", encoding="utf-8") as f:
-#             return json.load(f)
-#     except (FileNotFoundError, json.JSONDecodeError):
-#         return []
-
-
-# def save_or_increment_cache(path: Path, items: list[str]) -> None:
-#     """
-#     Добавляет не найденные ингредиенты в кэш или увеличивает счётчик lookup_count.
-#
-#     Используется для дальнейшего ручного пополнения базы ингредиентов.
-#     """
-#     if not items:
-#         return
-#
-#     cache_data = load_cache(path)
-#
-#     for item in items:
-#         normalized_item = normalize_name(item)
-#
-#         if not normalized_item:
-#             continue
-#
-#         search_lower = normalized_item.lower()
-#         found = False
-#
-#         for record in cache_data:
-#             if (
-#                 search_lower == record["id"].lower()
-#                 or search_lower == record["name_ru"].lower()
-#                 or any(search_lower == alias.lower() for alias in record["aliases_ru"])
-#                 or search_lower == record["name_en"].lower()
-#                 or any(search_lower == alias.lower() for alias in record["aliases_en"])
-#             ):
-#                 record["lookup_count"] += 1
-#                 found = True
-#                 break
-#
-#         if not found:
-#             record_json: IngredientRecord = {
-#                 "id": normalized_item.replace(" ", "_"),
-#                 "name_ru": normalized_item,
-#                 "name_en": "",
-#                 "aliases_ru": [],
-#                 "aliases_en": [],
-#                 "kcal_per_100g": 0,
-#                 "protein_per_100g": 0,
-#                 "fat_per_100g": 0,
-#                 "carbs_per_100g": 0,
-#                 "category": "",
-#                 "region": ["ru", "eu"],
-#                 "unit": "g",
-#                 "source": "usda_cache",
-#                 "usda_id": None,
-#                 "lookup_count": 1,
-#                 "migrated": False,
-#             }
-#             cache_data.append(record_json)
-#
-#     with open(path, "w", encoding="utf-8") as f:
-#         json.dump(cache_data, f, ensure_ascii=False, indent=2)
-
-def clean_vision_output(text: str) -> str:
-    """
-    Очищает ответ vision-модели.
-
-    Оставляет только строки с разделителем "—",
-    убирает дубли, строки "по вкусу" и строки с китайскими символами.
-    """
-    if not text:
-        return ""
-
-    cleaned: list[str] = []
-    seen: set[str] = set()
-
-    for line in text.splitlines():
-        if "—" not in line:
-            continue
-
-        name = line.split("—")[0].strip()
-
-        if "по вкусу" in line:
-            continue
-
-        if name in seen:
-            continue
-
-        if re.search(r"[\u4e00-\u9fff]", line):
-            continue
-
-        seen.add(name)
-        cleaned.append(line)
-
-    return "\n".join(cleaned)
-
 
 def handle_recipe_mode(ai_text: str) -> str:
     """

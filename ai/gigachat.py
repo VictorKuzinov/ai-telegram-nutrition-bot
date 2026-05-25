@@ -7,7 +7,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from pathlib import Path
 
-from config_ai import PROMPT_GIGACHAT, CONFIG
+from config_ai import PROMPT_GIGACHAT, CONFIG, menu_user_message
 from services.message_ai_parser import clean_recipe_output
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -219,7 +219,44 @@ def call_gigachat_vision(image_path: str, token: str) -> str | None:
 
     return result["choices"][0]["message"].get("content")
 
-def generate_user_prompt(data: dict) -> str:
+def call_gigachat_recipe(token: str, mode: str, user_prompt: str) -> str | None:
+    system_content = CONFIG.get(mode)["system_prompt"]
+    print(system_content)
+    payload = {
+        "model": "GigaChat-Pro",
+        "messages": [
+            {
+                "role": "system",
+                "content": system_content,
+            },
+            {
+                "role": "user",
+                "content": user_prompt,
+            }
+        ],
+        "temperature": 0.3,
+        "max_tokens": 400,
+    }
+
+    response = requests.post(
+        "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        verify=False,
+    )
+
+    result = response.json()
+    logger.debug("CHAT:", result)
+
+    if response.status_code != 200:
+        return None
+
+    return result["choices"][0]["message"].get("content")
+
+def generate_user_prompt_recipe(data: dict) -> str:
     user_prompt = f"""
         Ты нутрициолог и повар.
 
@@ -247,42 +284,6 @@ def generate_user_prompt(data: dict) -> str:
     return user_prompt
 
 
-def call_gigachat_recipe(token: str, prompt: str) -> str | None:
-
-    payload = {
-        "model": "GigaChat-Pro",
-        "messages": [
-            {
-                "role": "system",
-                "content": CONFIG["recipe"]["system_prompt"],
-            },
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ],
-        "temperature": 0.3,
-        "max_tokens": 400,
-    }
-
-    response = requests.post(
-        "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
-        json=payload,
-        verify=False,
-    )
-
-    result = response.json()
-    logger.debug("CHAT:", result)
-
-    if response.status_code != 200:
-        return None
-
-    return result["choices"][0]["message"].get("content")
-
 if __name__ == "__main__":
     data ={}
 
@@ -292,7 +293,7 @@ if __name__ == "__main__":
     data["persons"] = "на 6 человек"
     data["kcal"] = "на 1000 килокалорий"
     data["wishes"] = "Хочу средиземноморскую кухню на обед"
-    user_message = generate_user_prompt(data)
+    user_message = generate_user_prompt_recipe(data)
 
     # image_url = "https://i.ibb.co/whzjRQ6Z/image.jpg"  # плов
     # image_url = "https://i.ibb.co/sJsXgjSh/download.jpg" ## борщ
@@ -302,6 +303,10 @@ if __name__ == "__main__":
     # download_image(image_url, image_path)
     #
     # content = call_gigachat_vision(image_path, access_token)
-    content = call_gigachat_recipe(access_token, user_message)
-    result = clean_recipe_output(content)
+    mode = "menu"
+    content = call_gigachat_recipe(access_token, mode =mode,user_prompt=menu_user_message)
+    if mode == "recipe":
+        result = clean_recipe_output(content)
+    else:
+        result = content
     logger.info(result)

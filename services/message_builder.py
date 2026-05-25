@@ -72,3 +72,69 @@ def build_calc_result_message(
         f"🍞 Углеводы: "
         f"{results['bju']['carbs']} г"
     )
+
+def filter_user_message(text: str) -> tuple[bool, str]:
+    """
+    Выполняет базовую фильтрацию пользовательского сообщения.
+
+    Отсекает пустые, слишком короткие, бессмысленные сообщения
+    и простые попытки prompt injection.
+
+    Возвращает:
+    - True и пустую строку, если сообщение допустимо;
+    - False и текст ответа пользователю, если сообщение нужно отклонить.
+    """
+    text_lower = text.lower().strip()
+
+    if not text_lower or len(text_lower) < 3:
+        return False, "Пожалуйста, задайте вопрос по питанию."
+
+    if len(set(text_lower)) < 3:
+        return False, "Пожалуйста, задайте вопрос по питанию."
+
+    suspicious_phrases = [
+        "игнорируй инструкции",
+        "забудь инструкции",
+        "ты теперь",
+        "system prompt",
+        "act as",
+        "ignore previous",
+    ]
+
+    if any(phrase in text_lower for phrase in suspicious_phrases):
+        return False, "Я отвечаю только на вопросы по питанию."
+
+    return True, ""
+
+def clean_vision_output(text: str) -> str:
+    """
+    Очищает ответ vision-модели.
+
+    Оставляет только строки с разделителем "—",
+    убирает дубли, строки "по вкусу" и строки с китайскими символами.
+    """
+    if not text:
+        return ""
+
+    cleaned: list[str] = []
+    seen: set[str] = set()
+
+    for line in text.splitlines():
+        if "—" not in line:
+            continue
+
+        name = line.split("—")[0].strip()
+
+        if "по вкусу" in line:
+            continue
+
+        if name in seen:
+            continue
+
+        if re.search(r"[\u4e00-\u9fff]", line):
+            continue
+
+        seen.add(name)
+        cleaned.append(line)
+
+    return "\n".join(cleaned)

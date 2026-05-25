@@ -6,7 +6,6 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
 from ai.gigachat import get_access_token, call_gigachat_vision, call_gigachat_recipe
-from ai.openouter_client import ask_ai
 from db.repositories import create_food_log, get_user_profile
 from keyboards import (
     ai_menu_keyboard,
@@ -324,7 +323,7 @@ async def kcal_handler(
     await state.set_state(RecipeForm.waiting_wishes)
     await message.answer("Дополнительные пожелания?")
 
-def generate_user_prompt(data:dict) -> str:
+def generate_user_prompt_recipe(data:dict) -> str:
     user_prompt = f"""
         Ты нутрициолог и повар.
         
@@ -361,8 +360,8 @@ async def wishes_handler(
     data = await state.get_data()
 
     access_token = get_access_token()
-    user_prompt = generate_user_prompt(data)
-    ai_text = call_gigachat_recipe(access_token, user_prompt)
+    user_prompt = generate_user_prompt_recipe(data)
+    ai_text = call_gigachat_recipe(access_token, mode='recipe', user_prompt=user_prompt)
 
     result = clean_recipe_output(ai_text)
     parsed = parse_ingredients(result)
