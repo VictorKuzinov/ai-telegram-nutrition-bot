@@ -5,9 +5,8 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
-from ai.gigachat_photo import get_access_token, call_gigachat_vision
+from ai.gigachat import get_access_token, call_gigachat_vision, call_gigachat_recipe
 from ai.openouter_client import ask_ai
-from config_ai import user_message
 from db.repositories import create_food_log, get_user_profile
 from keyboards import (
     ai_menu_keyboard,
@@ -21,7 +20,7 @@ from nutrition.nutrition_cache import (
     cache_path,
     save_or_increment_cache,
 )
-from services.message_ai_parser import parse_ingredients
+from services.message_ai_parser import parse_ingredients, clean_recipe_output
 from states import PhotoForm, RecipeForm
 
 router = Router()
@@ -326,7 +325,7 @@ async def kcal_handler(
     await message.answer("Дополнительные пожелания?")
 
 def generate_user_prompt(data:dict) -> str:
-    user_prompt = """
+    user_prompt = f"""
         Ты нутрициолог и повар.
         
         Составь рецепт блюда.
@@ -356,12 +355,38 @@ def generate_user_prompt(data:dict) -> str:
 async def wishes_handler(
         message: Message,
         state: FSMContext,
-        mode = "recipe"
 ) -> None:
     await state.update_data(wishes=message.text)
     await message.answer("Формирую рецепт...")
     data = await state.get_data()
-    user_message = generate_user_prompt(data)
-    ai_text = ask_ai(user_message=user_message, mode=mode)
-    await message.answer(ai_text)
+
+    access_token = get_access_token()
+    user_prompt = generate_user_prompt(data)
+    ai_text = call_gigachat_recipe(access_token, user_prompt)
+
+    result = clean_recipe_output(ai_text)
+    parsed = parse_ingredients(result)
+
+    if not parsed:
+        await message.answer(result)
+        await message.answer(
+            "⚠️ Не удалось рассчитать КБЖУ: ингредиенты не распознаны."
+        )
+        await state.clear()
+        return
+
+    total, not_found = calculate_nutrition(parsed)
+
+    answer = result.strip()
+    answer += "\n" + footer_recipe(total)
+
+    if not_found:
+        answer += "\n⚠ Не учтены в расчёте:\n"
+
+        for item in not_found:
+            answer += f"- {item}\n"
+
+        save_or_increment_cache(cache_path, not_found)
+
+    await message.answer(answer)
     await state.clear()

@@ -78,12 +78,14 @@ def transform_to_internal(record, data_usda) -> dict|None:
     data_usda = normalize_usda(data_usda)
     aliases_ru = []
     aliases_en = []
+    aliases_ru.append(record["name_ru"])
+    aliases_en.append(record["name_en"])
     record_json = {
         "id": record["name_en"].lower().replace( " ", "_"),
         "name_ru": record["name_ru"],
         "name_en": record["name_en"],
-        "aliases_ru": aliases_ru.append(record["name_ru"]),
-        "aliases_en": aliases_en.append(record["name_en"]),
+        "aliases_ru": aliases_ru,
+        "aliases_en": aliases_en,
         "kcal_per_100g": data_usda["kcal_per_100g"],
         "protein_per_100g": data_usda["protein_per_100g"],
         "fat_per_100g": data_usda["fat_per_100g"],

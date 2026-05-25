@@ -7,7 +7,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from pathlib import Path
 
-from config_ai import PROMPT_GIGACHAT, CONFIG, PROMPT_GIGACHAT_PECIPE
+from config_ai import PROMPT_GIGACHAT, CONFIG
 from services.message_ai_parser import clean_recipe_output
 
 BASE_DIR = Path(__file__).resolve().parent

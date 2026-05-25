@@ -1217,7 +1217,9 @@
     "name_ru": "кабачок",
     "name_en": "zucchini",
     "aliases_ru": [
-      "кабачки"
+      "кабачки",
+      "цукини",
+      "цуккини"
     ],
     "aliases_en": [
       "courgette"
@@ -2548,157 +2550,294 @@
     "source": "manual"
   },
   {
-  "id": "bay_leaf",
-  "name_ru": "лавровый лист",
-  "name_en": "bay leaf",
+    "id": "bay_leaf",
+    "name_ru": "лавровый лист",
+    "name_en": "bay leaf",
+    "aliases_ru": [
+      "лаврушка"
+    ],
+    "aliases_en": [
+      "bay leaves"
+    ],
+    "kcal_per_100g": 313,
+    "protein_per_100g": 7.61,
+    "fat_per_100g": 8.36,
+    "carbs_per_100g": 75.0,
+    "category": "spice",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "tomato_paste",
+    "name_ru": "томатная паста",
+    "name_en": "tomato paste",
+    "aliases_ru": [
+      "томат"
+    ],
+    "aliases_en": [
+      "tomato sauce"
+    ],
+    "kcal_per_100g": 76.0,
+    "protein_per_100g": 3.03,
+    "fat_per_100g": 0.0,
+    "carbs_per_100g": 18.2,
+    "category": "sauce",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "cabbage_soup",
+    "name_ru": "щи",
+    "name_en": "cabbage soup",
+    "aliases_ru": [
+      "щи домашние"
+    ],
+    "aliases_en": [
+      "cabbage soups"
+    ],
+    "kcal_per_100g": 65.0,
+    "protein_per_100g": 1.1,
+    "fat_per_100g": 0.5,
+    "carbs_per_100g": 2.4,
+    "category": "soup",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "omelet",
+    "name_ru": "омлет",
+    "name_en": "omelet",
+    "aliases_ru": [
+      "омлеты"
+    ],
+    "aliases_en": [
+      "omelets"
+    ],
+    "kcal_per_100g": 25,
+    "protein_per_100g": 1.1,
+    "fat_per_100g": 0.23,
+    "carbs_per_100g": 5.49,
+    "category": "breakfast",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "boiled_buckwheat",
+    "name_ru": "гречка отварная",
+    "name_en": "boiled buckwheat",
+    "aliases_ru": [
+      "греча"
+    ],
+    "aliases_en": [
+      "buckwheat"
+    ],
+    "kcal_per_100g": 343,
+    "protein_per_100g": 13.2,
+    "fat_per_100g": 3.4,
+    "carbs_per_100g": 71.5,
+    "category": "grain",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "boiled_rice",
+    "name_ru": "рис отварной",
+    "name_en": "boiled rice",
+    "aliases_ru": [
+      "вареный рис"
+    ],
+    "aliases_en": [
+      "rice"
+    ],
+    "kcal_per_100g": 318,
+    "protein_per_100g": 13.5,
+    "fat_per_100g": 22.01,
+    "carbs_per_100g": 21.26,
+    "category": "grain",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "mushroom_soup",
+    "name_ru": "грибной суп",
+    "name_en": "mushroom soup",
+    "aliases_ru": [
+      "суп грибной"
+    ],
+    "aliases_en": [
+      "mushroom soups"
+    ],
+    "kcal_per_100g": 74,
+    "protein_per_100g": 2.1,
+    "fat_per_100g": 4.76,
+    "carbs_per_100g": 5.7,
+    "category": "soup",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "oregano",
+    "name_ru": "сушёные орегано",
+    "name_en": "oregano",
+    "aliases_ru": [
+      "орегано"
+    ],
+    "aliases_en": [
+      "oregano"
+    ],
+    "kcal_per_100g": 1110.0,
+    "protein_per_100g": 9.0,
+    "fat_per_100g": 4.28,
+    "carbs_per_100g": 68.9,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "lemon_juice",
+    "name_ru": "лимонный сок",
+    "name_en": "lemon juice",
+    "aliases_ru": [
+      "лимонный сок"
+    ],
+    "aliases_en": [
+      "lemon juice"
+    ],
+    "kcal_per_100g": 22.0,
+    "protein_per_100g": 0.35,
+    "fat_per_100g": 0.24,
+    "carbs_per_100g": 6.9,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "rosemary",
+    "name_ru": "розмарин",
+    "name_en": "rosemary",
+    "aliases_ru": [
+      "розмарин"
+    ],
+    "aliases_en": [
+      "rosemary"
+    ],
+    "kcal_per_100g": 131,
+    "protein_per_100g": 3.31,
+    "fat_per_100g": 5.86,
+    "carbs_per_100g": 20.7,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "thyme",
+    "name_ru": "тимьян",
+    "name_en": "thyme",
+    "aliases_ru": [
+      "тимьян"
+    ],
+    "aliases_en": [
+      "thyme"
+    ],
+    "kcal_per_100g": 101,
+    "protein_per_100g": 5.56,
+    "fat_per_100g": 1.68,
+    "carbs_per_100g": 24.4,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "cherry_tomato",
+    "name_ru": "помидоры черри",
+    "name_en": "cherry tomato",
+    "aliases_ru": [
+      "помидоры черри"
+    ],
+    "aliases_en": [
+      "cherry tomato"
+    ],
+    "kcal_per_100g": 71,
+    "protein_per_100g": 1.04,
+    "fat_per_100g": 0.19,
+    "carbs_per_100g": 16.16,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+  "id": "okroshka",
+  "name_ru": "окрошка",
+  "name_en": "okroshka",
   "aliases_ru": [
-    "лаврушка"
+    "окрошка на кефире",
+    "окрошка на квасе"
   ],
   "aliases_en": [
-    "bay leaves"
+    "okroshka",
+    "cold soup"
   ],
-  "kcal_per_100g": 313,
-  "protein_per_100g": 7.61,
-  "fat_per_100g": 8.36,
-  "carbs_per_100g": 75.0,
-  "category": "spice",
-  "region": [
-    "ru",
-    "eu"
-  ],
-  "unit": "g",
-  "source": "local"
-},
-{
-  "id": "tomato_paste",
-  "name_ru": "томатная паста",
-  "name_en": "tomato paste",
-  "aliases_ru": [
-    "томат"
-  ],
-  "aliases_en": [
-    "tomato sauce"
-  ],
-  "kcal_per_100g": 76.0,
-  "protein_per_100g": 3.03,
-  "fat_per_100g": 0.0,
-  "carbs_per_100g": 18.2,
-  "category": "sauce",
-  "region": [
-    "ru",
-    "eu"
-  ],
-  "unit": "g",
-  "source": "local"
-},
-{
-  "id": "cabbage_soup",
-  "name_ru": "щи",
-  "name_en": "cabbage soup",
-  "aliases_ru": [
-    "щи домашние"
-  ],
-  "aliases_en": [
-    "cabbage soups"
-  ],
-  "kcal_per_100g": 65.0,
-  "protein_per_100g": 1.1,
-  "fat_per_100g": 0.5,
-  "carbs_per_100g": 2.4,
+  "kcal_per_100g": 68,
+  "protein_per_100g": 3.5,
+  "fat_per_100g": 3.8,
+  "carbs_per_100g": 5.0,
   "category": "soup",
   "region": [
     "ru",
     "eu"
   ],
   "unit": "g",
-  "source": "local"
-},
-{
-  "id": "omelet",
-  "name_ru": "омлет",
-  "name_en": "omelet",
-  "aliases_ru": [
-    "омлеты"
-  ],
-  "aliases_en": [
-    "omelets"
-  ],
-  "kcal_per_100g": 25,
-  "protein_per_100g": 1.1,
-  "fat_per_100g": 0.23,
-  "carbs_per_100g": 5.49,
-  "category": "breakfast",
-  "region": [
-    "ru",
-    "eu"
-  ],
-  "unit": "g",
-  "source": "local"
-},
-{
-  "id": "boiled_buckwheat",
-  "name_ru": "гречка отварная",
-  "name_en": "boiled buckwheat",
-  "aliases_ru": [
-    "греча"
-  ],
-  "aliases_en": [
-    "buckwheat"
-  ],
-  "kcal_per_100g": 343,
-  "protein_per_100g": 13.2,
-  "fat_per_100g": 3.4,
-  "carbs_per_100g": 71.5,
-  "category": "grain",
-  "region": [
-    "ru",
-    "eu"
-  ],
-  "unit": "g",
-  "source": "local"
-},
-{
-  "id": "boiled_rice",
-  "name_ru": "рис отварной",
-  "name_en": "boiled rice",
-  "aliases_ru": [
-    "вареный рис"
-  ],
-  "aliases_en": [
-    "rice"
-  ],
-  "kcal_per_100g": 318,
-  "protein_per_100g": 13.5,
-  "fat_per_100g": 22.01,
-  "carbs_per_100g": 21.26,
-  "category": "grain",
-  "region": [
-    "ru",
-    "eu"
-  ],
-  "unit": "g",
-  "source": "local"
-},
-{
-  "id": "mushroom_soup",
-  "name_ru": "грибной суп",
-  "name_en": "mushroom soup",
-  "aliases_ru": [
-    "суп грибной"
-  ],
-  "aliases_en": [
-    "mushroom soups"
-  ],
-  "kcal_per_100g": 74,
-  "protein_per_100g": 2.1,
-  "fat_per_100g": 4.76,
-  "carbs_per_100g": 5.7,
-  "category": "soup",
-  "region": [
-    "ru",
-    "eu"
-  ],
-  "unit": "g",
-  "source": "local"
+  "source": "manual",
+  "usda_id": null,
+  "lookup_count": 1,
+  "migrated": true
 }
 ]

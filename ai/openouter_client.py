@@ -12,7 +12,7 @@ from config_ai import (
     choice_menu,
     reserve_model, user_message
 )
-from ai.gigachat_photo import (
+from ai.gigachat import (
     call_gigachat_vision,
     download_image,
     get_access_token,
