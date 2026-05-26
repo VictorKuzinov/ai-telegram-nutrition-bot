@@ -8,7 +8,10 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 from config_ai import PROMPT_GIGACHAT, CONFIG, menu_user_message
-from services.message_ai_parser import clean_recipe_output
+from services.message_ai_parser import (
+    clean_recipe_output,
+    parse_ingredients_menu,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -29,6 +32,9 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(levelname)s:%(name)s:%(message)s"
 )
+
+models = ["GigaChat-Pro", "GigaChat-Max", "GigaChat"]
+
 
 class GigaChatError(Exception):
     """Базовое исключение для ошибок GigaChat API."""
@@ -183,6 +189,42 @@ def upload_gigachat_file(image_path: str, token: str) -> str | None:
 
     return result.get("id")
 
+def send_gigachat_request(
+        token: str,
+        model: str,
+        system_prompt: str,
+        user_prompt: str,
+) -> requests.Response:
+
+    payload = {
+        "model": model,
+        "messages": [
+            {
+                "role": "system",
+                "content": system_prompt,
+            },
+            {
+                "role": "user",
+                "content": user_prompt,
+            }
+        ],
+        "temperature": 0,
+        "max_tokens": 250,
+    }
+
+    response = requests.post(
+        "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        verify=False,
+        timeout=60,
+    )
+
+    return response
+
 
 def call_gigachat_vision(image_path: str, token: str) -> str | None:
     file_id = upload_gigachat_file(image_path, token)
@@ -219,40 +261,34 @@ def call_gigachat_vision(image_path: str, token: str) -> str | None:
 
     return result["choices"][0]["message"].get("content")
 
-def call_gigachat_recipe(token: str, mode: str, user_prompt: str) -> str | None:
-    system_content = CONFIG.get(mode)["system_prompt"]
-    print(system_content)
-    payload = {
-        "model": "GigaChat-Pro",
-        "messages": [
-            {
-                "role": "system",
-                "content": system_content,
-            },
-            {
-                "role": "user",
-                "content": user_prompt,
-            }
-        ],
-        "temperature": 0.3,
-        "max_tokens": 400,
-    }
+def call_gigachat(token: str, mode: str, user_prompt: str) -> str | None:
 
-    response = requests.post(
-        "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
-        json=payload,
-        verify=False,
-    )
+    cfg = CONFIG.get(mode, {})
+    system_content = cfg.get("system_prompt", "")
+
+    for model in models:
+        response = send_gigachat_request(
+            token,
+            model,
+            system_content,
+            user_prompt,
+        )
+
+        if response.status_code == 200:
+            break
+
+    else:
+        result = response.json()
+        logger.error(
+            "GigaChat error %s: %s",
+            response.status_code,
+            result,
+        )
+        return None
 
     result = response.json()
-    logger.debug("CHAT:", result)
 
-    if response.status_code != 200:
-        return None
+    logger.debug("CHAT: %s", result)
 
     return result["choices"][0]["message"].get("content")
 
@@ -304,9 +340,12 @@ if __name__ == "__main__":
     #
     # content = call_gigachat_vision(image_path, access_token)
     mode = "menu"
-    content = call_gigachat_recipe(access_token, mode =mode,user_prompt=menu_user_message)
+    content = call_gigachat(access_token, mode =mode,user_prompt=menu_user_message)
     if mode == "recipe":
         result = clean_recipe_output(content)
     else:
         result = content
+        parsed = parse_ingredients_menu(result)
+        print(parsed)
+
     logger.info(result)

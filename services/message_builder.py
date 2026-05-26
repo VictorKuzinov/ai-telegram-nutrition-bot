@@ -1,3 +1,5 @@
+import re
+
 from nutrition.nutrition_calc import (
     ACTIVITY_LEVELS,
     TARGETS,

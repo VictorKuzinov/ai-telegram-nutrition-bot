@@ -1,5 +1,7 @@
 import re
 
+from config_ai import choice_menu
+
 ParsedIngredient = dict[str, str | float]
 ParsedIngredients = list[ParsedIngredient]
 
@@ -48,6 +50,61 @@ def parse_ingredients(text: str) -> ParsedIngredients:
 
         parsed.append(
             {
+                "name": name,
+                "weight": amount,
+            }
+        )
+
+    return parsed
+
+def parse_ingredients_menu(text: str) -> ParsedIngredients:
+    """
+    Извлекает из текста список продуктов и их вес.
+
+    Поддерживает строки вида:
+    - продукт — 100 г
+    - продукт - 100 гр
+    - продукт — 100 мл
+
+    Единицы "шт." игнорируются, потому что пока нет пересчёта штук в граммы.
+    """
+    parsed: ParsedIngredients = []
+
+    current_meal = None
+
+    for line in text.splitlines():
+        lower_line = line.lower().strip()
+
+        if lower_line.endswith(":"):
+            meal_name = lower_line.replace(":", "")
+
+            if meal_name in choice_menu:
+                current_meal = meal_name
+
+            continue
+
+        if current_meal is None:
+            continue
+
+        match = re.search(
+            r"(.+?)\s*[—–-]\s*(\d+(?:[.,]\d+)?)\s*(г|гр|мл|шт)",
+            line.lower(),
+        )
+
+        if not match:
+            continue
+
+        name = match.group(1).strip()
+        name = name.lstrip("- ").strip()
+        unit = match.group(3).strip()
+        amount = float(match.group(2).replace(",", "."))
+
+        if unit not in ("г", "гр", "мл"):
+            continue
+
+        parsed.append(
+            {
+                "meal": current_meal,
                 "name": name,
                 "weight": amount,
             }

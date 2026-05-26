@@ -5,8 +5,15 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
-from ai.gigachat import get_access_token, call_gigachat_vision, call_gigachat_recipe
-from db.repositories import create_food_log, get_user_profile
+from ai.gigachat import (
+    get_access_token,
+    call_gigachat_vision,
+    call_gigachat,
+)
+from db.repositories import (
+    create_food_log,
+    get_user_profile,
+)
 from keyboards import (
     ai_menu_keyboard,
     confirm_food_keyboard, main_menu_keyboard,
@@ -361,7 +368,7 @@ async def wishes_handler(
 
     access_token = get_access_token()
     user_prompt = generate_user_prompt_recipe(data)
-    ai_text = call_gigachat_recipe(access_token, mode='recipe', user_prompt=user_prompt)
+    ai_text = call_gigachat(access_token, mode='recipe', user_prompt=user_prompt)
 
     result = clean_recipe_output(ai_text)
     parsed = parse_ingredients(result)
