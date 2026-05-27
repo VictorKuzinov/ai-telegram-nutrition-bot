@@ -201,7 +201,6 @@ def send_gigachat_request(
         system_prompt: str,
         user_prompt: str,
 ) -> requests.Response:
-    print(model)
     payload = {
         "model": model,
         "messages": [
@@ -239,7 +238,7 @@ def call_gigachat_vision(image_path: str, token: str) -> str | None:
         return None
 
     payload = {
-        "model": "GigaChat-Pro",
+        "model": "GigaChat-Max",
         "messages": [
             {
                 "role": "user",
@@ -352,7 +351,6 @@ if __name__ == "__main__":
     else:
         result = content
         parsed_menu = parse_ingredients_menu(result)
-        print("PARSED_MENU:", parsed_menu)
 
         meals: dict[str, list[dict]] = {}
 

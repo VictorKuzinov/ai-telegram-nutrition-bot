@@ -93,7 +93,17 @@ async def process_food_photo_handler(
         str(image_path),
         access_token
     )
+    content = call_gigachat_vision(
+        str(image_path),
+        access_token,
+    )
 
+    if not content:
+        await message.answer(
+            "⚠️ Не удалось распознать блюдо. Попробуйте другое фото."
+        )
+        await state.clear()
+        return
     await message.answer(f"Распознано блюдо: {content}")
     ingredients = parse_ingredients_recipe(content)
 
@@ -430,7 +440,7 @@ async def wishes_handler(
     total, not_found = calculate_nutrition(parsed)
 
     answer = result.strip()
-    answer += "\n" + footer(total)
+    answer += "\n" + footer(total, "recipe")
 
     if not_found:
         answer += "\n⚠ Не учтены в расчёте:\n"
@@ -547,7 +557,7 @@ async def wishes_handler(
     for meal_name, ingredients in meals.items():
         total, not_found = calculate_nutrition(ingredients)
 
-        answer += "\n" + "═" * 20 + "\n"
+        answer += "\n" + "═" * 16 + "\n"
         answer += f"\nПриём пищи: {meal_name}\n"
         answer += footer(total, "menu")
 
