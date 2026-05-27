@@ -16,18 +16,22 @@ from db.repositories import (
 )
 from keyboards import (
     ai_menu_keyboard,
-    confirm_food_keyboard, main_menu_keyboard,
+    confirm_food_keyboard,
+    main_menu_keyboard,
 )
 from nutrition.nutrition_calc import (
     calculate_nutrition,
-    footer_recipe,
+    footer, calc_bmr, calc_base_calories, calc_energy_total,
 )
 from nutrition.nutrition_cache import (
     cache_path,
     save_or_increment_cache,
 )
-from services.message_ai_parser import parse_ingredients, clean_recipe_output
-from states import PhotoForm, RecipeForm
+from services.message_ai_parser import (
+    clean_recipe_output,
+    parse_ingredients_recipe, parse_ingredients_menu
+)
+from states import PhotoForm, RecipeForm, MenuForm
 
 router = Router()
 
@@ -91,7 +95,7 @@ async def process_food_photo_handler(
     )
 
     await message.answer(f"Распознано блюдо: {content}")
-    ingredients = parse_ingredients(content)
+    ingredients = parse_ingredients_recipe(content)
 
     if not ingredients:
         await message.answer(
@@ -238,7 +242,7 @@ async def weight_handler(
         )
 
         await message.answer(
-            footer_recipe(total)
+            footer(total)
         )
 
     await state.clear()
@@ -357,6 +361,27 @@ def generate_user_prompt_recipe(data:dict) -> str:
     """
     return user_prompt
 
+
+def generate_user_prompt_menu(data: dict, daily_kcal: float) -> str:
+    user_prompt = f"""
+        Ты нутрициолог и повар.
+
+        Составь меню на день
+        пртмерно на {daily_kcal}
+
+        Количество приемов пищи:
+        {data["meal_count"]}
+
+        Дополнительные пожелания:
+        {data["wishes"]}
+
+        Требования:
+        Если приёмов пищи больше трёх,
+        дополнительные называй "Перекус".
+    """
+    return user_prompt
+
+
 @router.message(RecipeForm.waiting_wishes)
 async def wishes_handler(
         message: Message,
@@ -371,7 +396,7 @@ async def wishes_handler(
     ai_text = call_gigachat(access_token, mode='recipe', user_prompt=user_prompt)
 
     result = clean_recipe_output(ai_text)
-    parsed = parse_ingredients(result)
+    parsed = parse_ingredients_recipe(result)
 
     if not parsed:
         await message.answer(result)
@@ -384,7 +409,7 @@ async def wishes_handler(
     total, not_found = calculate_nutrition(parsed)
 
     answer = result.strip()
-    answer += "\n" + footer_recipe(total)
+    answer += "\n" + footer(total)
 
     if not_found:
         answer += "\n⚠ Не учтены в расчёте:\n"
@@ -395,4 +420,110 @@ async def wishes_handler(
         save_or_increment_cache(cache_path, not_found)
 
     await message.answer(answer)
+    await state.clear()
+
+@router.message(Command('menu'))
+async def menu_handler(
+        message: Message,
+        state: FSMContext,
+) -> None:
+    await start_menu_flow(message, state)
+
+@router.message(F.text == "📋 Меню на день")
+async def menu_from_menu_handler(
+        message: Message,
+        state: FSMContext,
+) -> None:
+    await message.answer("🍳 Получить меню на день:")
+    await start_menu_flow(message, state)
+
+async def start_menu_flow(
+        message: Message,
+        state: FSMContext,
+) -> None:
+    await state.set_state(MenuForm.waiting_meal_count)
+    await message.answer("Введите на сколько приемов пищи создать меню (от 3 до 6)?")
+
+@router.message(MenuForm.waiting_meal_count)
+async def wishes_meal_count(
+    message: Message,
+    state: FSMContext,
+) -> None:
+    if not message.text.isdigit():
+        await message.answer("Введите число от 3 до 6")
+        return
+
+    meal_count = int(message.text)
+
+    if meal_count < 3 or meal_count > 6:
+        await message.answer("Введите число от 3 до 6")
+        return
+
+    await state.update_data(meal_count=meal_count)
+    await state.set_state(MenuForm.waiting_wishes)
+    await message.answer("Введите пожелания к меню (или напишите 'нет')")
+
+@router.message(MenuForm.waiting_wishes)
+async def wishes_handler(
+        message: Message,
+        state: FSMContext,
+) -> None:
+    await state.update_data(wishes=message.text)
+    await message.answer("Формирую рецепт...")
+    data = await state.get_data()
+    profile = get_user_profile(message.from_user.id)
+    if profile is None:
+        await message.answer("Профиль пользователя не найден.")
+        await state.clear()
+        return
+    bmr = calc_bmr(
+        gender=profile.gender,
+        weight=profile.weight,
+        height=profile.height,
+        age=profile.age,
+    )
+
+    base_calories = round(
+        calc_base_calories(
+            bmr,
+            activity_level=profile.activity,
+        )
+    )
+
+    total_energy = calc_energy_total(
+        base_calories,
+        target=profile.target,
+    )
+    access_token = get_access_token()
+    user_prompt = generate_user_prompt_menu(data, total_energy)
+    ai_text = call_gigachat(
+        access_token,
+        mode='menu',
+        user_prompt=user_prompt
+    )
+    parsed_menu = parse_ingredients_menu(ai_text)
+    meals: dict[str, list[dict]] = {}
+
+    for item in parsed_menu:
+        meal = item["meal"]
+
+        if meal not in meals:
+            meals[meal] = []
+
+        meals[meal].append(item)
+    answer = ""
+
+    for meal_name, ingredients in meals.items():
+        total, not_found = calculate_nutrition(ingredients)
+
+        answer += "\n" + "═" * 20 + "\n"
+        answer += f"\nПриём пищи: {meal_name}"
+        answer += footer(total, "menu")
+
+        if not_found:
+            answer += "\n⚠ Не учтены в расчёте:\n"
+            for item in not_found:
+                answer += f"- {item}\n"
+    await message.answer(answer)
+    save_or_increment_cache(cache_path, not_found)
     await state.clear()

@@ -278,12 +278,16 @@ def calculate_nutrition(parsed_ingredients: ParsedIngredients) -> tuple[Nutritio
 
     return total, not_found
 
-def footer_recipe(total: NutritionTotal) -> str:
+def footer(total: NutritionTotal, mode: str) -> str:
     """
     Формирует текстовый блок с пищевой ценностью блюда.
     """
+    if mode == "menu":
+        title = "Пищевая ценность приёма пищи"
+    else:
+        title = "Пищевая ценность (на весь рецепт)"
     return f"""
-🍽 <b>Пищевая ценность (на весь рецепт):</b>
+🍽 <b>{title}:</b>
 
 🔥 Калорийность: {total["kcal"]} ккал
 🥩 Белки: {total["protein"]} г
@@ -298,3 +302,56 @@ def footer_recipe(total: NutritionTotal) -> str:
 🧈 Жиры: {total["fat_100g"]} г
 🍞 Углеводы: {total["carbs_100g"]} г
 """
+
+def calculate_nutrition_menu(parsed_ingredients: ParsedIngredients) -> tuple[NutritionTotal, list[str]]:
+    """
+    Рассчитывает калорийность, БЖУ и вес блюда.
+
+    Возвращает:
+    - словарь с итогами на весь рецепт и на 100 г;
+    - список ингредиентов, которых нет в базе.
+    """
+    not_found: list[str] = []
+    total_kcal = 0.0
+    total_protein = 0.0
+    total_fat = 0.0
+    total_carbs = 0.0
+    total_weight = 0.0
+
+    for ingredient in parsed_ingredients:
+        name = ingredient["name"]
+        grams = ingredient["weight"]
+
+        item = find_ingredient(name)
+
+        if item:
+            coef = grams / 100
+            total_kcal += item["kcal_per_100g"] * coef
+            total_protein += item["protein_per_100g"] * coef
+            total_fat += item["fat_per_100g"] * coef
+            total_carbs += item["carbs_per_100g"] * coef
+            total_weight += grams
+        else:
+            not_found.append(name)
+
+    if total_weight > 0:
+        kcal_100 = total_kcal / total_weight * 100
+        protein_100 = total_protein / total_weight * 100
+        fat_100 = total_fat / total_weight * 100
+        carbs_100 = total_carbs / total_weight * 100
+    else:
+        kcal_100 = protein_100 = fat_100 = carbs_100 = 0.0
+
+    total: NutritionTotal = {
+        "kcal": round(total_kcal, 0),
+        "protein": round(total_protein, 1),
+        "fat": round(total_fat, 1),
+        "carbs": round(total_carbs, 1),
+        "weight": round(total_weight, 1),
+        "kcal_100g": round(kcal_100, 0),
+        "protein_100g": round(protein_100, 1),
+        "fat_100g": round(fat_100, 1),
+        "carbs_100g": round(carbs_100, 1),
+    }
+
+    return total, not_found

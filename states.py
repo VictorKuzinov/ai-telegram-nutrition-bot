@@ -21,3 +21,10 @@ class RecipeForm(StatesGroup):
     waiting_persons = State()
     waiting_kcal = State()
     waiting_wishes = State()
+
+class MenuForm(StatesGroup):
+    waiting_meal_count = State()
+    waiting_wishes = State()
+
+class ProfileForm(StatesGroup):
+    waiting_weight = State()

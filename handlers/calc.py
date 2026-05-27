@@ -12,7 +12,8 @@ from db.repositories import (
 from keyboards import (
     gender_keyboard,
     activity_keyboard,
-    target_keyboard, calc_menu_keyboard,
+    target_keyboard,
+    calc_menu_keyboard,
     main_menu_keyboard,
 )
 from services.message_builder import (
@@ -72,15 +73,23 @@ async def start_calc_flow(
     telegram_id = message.from_user.id
     await state.update_data(mode=mode)
     profile = get_user_profile(telegram_id)
+
     if mode == "create" and profile is not None:
         results = calculate_profile_results(profile)
-        await message.answer(
-            build_calc_result_message(
-                profile, results
-            )
-        )
+        await message.answer(build_calc_result_message(profile, results))
         return
 
+    if mode == "update" and profile is None:
+        await message.answer("Профиль не найден. Создадим его заново.")
+        mode = "create"
+        await state.update_data(mode=mode)
+
+    if mode == "update":
+        text = "✏️ Обновим ваш профиль."
+    else:
+        text = "Давайте рассчитаем вашу норму калорий."
+
+    await message.answer(text)
     await state.set_state(CalcForm.gender)
     await message.answer(
         "Выберите пол:",

@@ -1,5 +1,7 @@
 import base64
 import uuid
+from multiprocessing.connection import answer_challenge
+
 import requests
 import os
 import logging
@@ -8,6 +10,10 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 from config_ai import PROMPT_GIGACHAT, CONFIG, menu_user_message
+from nutrition.nutrition_calc import (
+    calculate_nutrition,
+    footer,
+)
 from services.message_ai_parser import (
     clean_recipe_output,
     parse_ingredients_menu,
@@ -195,7 +201,7 @@ def send_gigachat_request(
         system_prompt: str,
         user_prompt: str,
 ) -> requests.Response:
-
+    print(model)
     payload = {
         "model": model,
         "messages": [
@@ -340,12 +346,37 @@ if __name__ == "__main__":
     #
     # content = call_gigachat_vision(image_path, access_token)
     mode = "menu"
-    content = call_gigachat(access_token, mode =mode,user_prompt=menu_user_message)
+    content = call_gigachat(access_token, mode =mode, user_prompt=menu_user_message)
     if mode == "recipe":
         result = clean_recipe_output(content)
     else:
         result = content
-        parsed = parse_ingredients_menu(result)
-        print(parsed)
+        parsed_menu = parse_ingredients_menu(result)
+        print("PARSED_MENU:", parsed_menu)
 
-    logger.info(result)
+        meals: dict[str, list[dict]] = {}
+
+        for item in parsed_menu:
+            meal = item["meal"]
+
+            if meal not in meals:
+                meals[meal] = []
+
+            meals[meal].append(item)
+        answer = ""
+
+        for meal_name, ingredients in meals.items():
+            total, not_found = calculate_nutrition(ingredients)
+
+            answer += "=" * 20
+            answer += f"\nПриём пищи: {meal_name}"
+            answer += footer(total, "menu")
+
+            if not_found:
+                answer += "\n⚠ Не учтены в расчёте:\n"
+                for item in not_found:
+                    answer += f"- {item}\n"
+
+        print(answer)
+
+    logger.debug(result)

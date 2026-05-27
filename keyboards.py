@@ -112,3 +112,17 @@ diary_menu_keyboard = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True,
 )
+
+profile_menu_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="✏️ Изменить профиль"),
+            KeyboardButton(text="🎯 Изменить цель"),
+        ],
+        [
+            KeyboardButton(text="⚖ Обновить вес"),
+            KeyboardButton(text="⬅️ Назад"),
+        ],
+    ],
+    resize_keyboard=True,
+)
