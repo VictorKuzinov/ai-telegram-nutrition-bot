@@ -110,10 +110,9 @@ async def process_food_photo_handler(
     )
 
     ingredients_text = "\n".join(
-        f"• {ingredient[0]}"
+        f"• {ingredient['name']}"
         for ingredient in ingredients
     )
-
     await state.set_state(PhotoForm.confirm_ingredient)
 
     await message.answer(
@@ -133,12 +132,15 @@ async def confirm_food_handler(
     )
 
     if callback.data == "confirm_food_yes":
+        await state.update_data(use_ai_ingredients=True)
         await state.set_state(PhotoForm.waiting_weight)
         await callback.message.answer(
+            "✅ Принято. Использую распознанные ингредиенты.\n"
             "Введите общий вес порции в граммах:"
         )
 
     elif callback.data == "confirm_food_no":
+        await state.update_data(use_ai_ingredients=False)
         await state.set_state(PhotoForm.edit_ingredient_name)
         await callback.message.answer(
             "Введите блюдо или ингредиенты вручную:"
@@ -182,27 +184,43 @@ async def weight_handler(
     data = await state.get_data()
 
     ingredients = data.get("ai_ingredients", [])
-
     corrected_food = data.get("corrected_food")
+    use_ai_ingredients = data.get("use_ai_ingredients", False)
 
-    if corrected_food:
-        food_title = corrected_food
+    if use_ai_ingredients and ingredients:
+        ai_total_weight = sum(item["weight"] for item in ingredients)
+
+        if ai_total_weight <= 0:
+            await message.answer("Не удалось определить вес ингредиентов.")
+            await state.clear()
+            return
+
+        ratio = weight / ai_total_weight
+
+        parsed_ingredients = [
+            {
+                "name": item["name"],
+                "weight": item["weight"] * ratio,
+            }
+            for item in ingredients
+        ]
+
+        food_title = ", ".join(item["name"] for item in ingredients)
+
     else:
-        food_title = ", ".join(
-            ingredient["name"]
-            for ingredient in ingredients
-        )
+        food_title = corrected_food
 
-    await state.update_data(
-        total_weight=weight,
-    )
+        parsed_ingredients = [
+            {
+                "name": food_title,
+                "weight": weight,
+            }
+        ]
 
-    parsed_ingredients = [
-        {
-            "name": food_title,
-            "weight": weight,
-        }
-    ]
+    if not food_title:
+        await message.answer("Не удалось определить блюдо.")
+        await state.clear()
+        return
 
     total, not_found = calculate_nutrition(parsed_ingredients)
     if not_found:
@@ -214,6 +232,8 @@ async def weight_handler(
             "⚠️ Блюдо пока отсутствует в базе ингредиентов.\n"
             "Оно добавлено в очередь на обработку."
         )
+        await state.clear()
+        return
     else:
         profile = get_user_profile(message.from_user.id)
 
@@ -242,7 +262,7 @@ async def weight_handler(
         )
 
         await message.answer(
-            footer(total)
+            footer(total, "recipe")
         )
 
     await state.clear()
@@ -257,6 +277,7 @@ async def edit_ingredient_name_handler(
 
     await state.update_data(
         corrected_food=text,
+        use_ai_ingredients=False,
     )
 
     await state.set_state(
@@ -469,7 +490,7 @@ async def wishes_handler(
         state: FSMContext,
 ) -> None:
     await state.update_data(wishes=message.text)
-    await message.answer("Формирую рецепт...")
+    await message.answer("Формирую меню...")
     data = await state.get_data()
     profile = get_user_profile(message.from_user.id)
     if profile is None:
@@ -501,7 +522,17 @@ async def wishes_handler(
         mode='menu',
         user_prompt=user_prompt
     )
+    if not ai_text:
+        await message.answer("⚠️ Не удалось получить меню от ИИ.")
+        await state.clear()
+        return
     parsed_menu = parse_ingredients_menu(ai_text)
+    if not parsed_menu:
+        await message.answer(
+            "⚠️ Не удалось рассчитать КБЖУ: ингредиенты не распознаны."
+        )
+        await state.clear()
+        return
     meals: dict[str, list[dict]] = {}
 
     for item in parsed_menu:
@@ -517,13 +548,14 @@ async def wishes_handler(
         total, not_found = calculate_nutrition(ingredients)
 
         answer += "\n" + "═" * 20 + "\n"
-        answer += f"\nПриём пищи: {meal_name}"
+        answer += f"\nПриём пищи: {meal_name}\n"
         answer += footer(total, "menu")
 
         if not_found:
             answer += "\n⚠ Не учтены в расчёте:\n"
             for item in not_found:
                 answer += f"- {item}\n"
+            save_or_increment_cache(cache_path, not_found)
+
     await message.answer(answer)
-    save_or_increment_cache(cache_path, not_found)
     await state.clear()

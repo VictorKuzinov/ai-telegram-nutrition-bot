@@ -131,7 +131,7 @@ async def edit_weight_handler(
     message: Message,
     state: FSMContext
 ) -> None:
-    await message.answer("Введите вес:")
+    await message.answer("⚖ Введите вес:")
     await state.set_state(ProfileForm.waiting_weight)
 
 @router.message(ProfileForm.waiting_weight)
@@ -148,5 +148,5 @@ async def weight_handler(
         updates={"weight": weight},
     )
 
-    await message.answer("⚖ Вес обновлен")
+    await message.answer("⚖️ Вес обновлен")
     await profile_follow_handler(message)
