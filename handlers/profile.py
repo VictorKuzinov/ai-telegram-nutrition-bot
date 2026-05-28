@@ -32,8 +32,9 @@ async def profile_handler(
 
 async def profile_follow_handler(
     message: Message,
+    telegram_id: int,
 ) -> None:
-    profile = get_user_profile(message.from_user.id)
+    profile = get_user_profile(telegram_id)
     if profile is None:
         await message.answer("👤 Профиль пользователя не найден.")
         return
@@ -96,7 +97,6 @@ async def edit_target_handler(
         "Выберите цель:",
         reply_markup=target_keyboard)
 
-
 @router.callback_query(F.data.startswith("target:"))
 async def target_handler(
     callback: CallbackQuery,
@@ -114,7 +114,7 @@ async def target_handler(
     )
 
     await callback.answer("🎯 Цель обновлена")
-    await profile_follow_handler(callback.message)
+    await profile_follow_handler(callback.message, callback.from_user.id)
 
 @router.message(F.text == "⬅️ Назад")
 async def back_to_main_menu_handler(
@@ -149,4 +149,4 @@ async def weight_handler(
     )
 
     await message.answer("⚖️ Вес обновлен")
-    await profile_follow_handler(message)
+    await profile_follow_handler(message, message.from_user.id)

@@ -501,6 +501,7 @@ async def wishes_handler(
 ) -> None:
     await state.update_data(wishes=message.text)
     await message.answer("Формирую меню...")
+    answer = ""
     data = await state.get_data()
     profile = get_user_profile(message.from_user.id)
     if profile is None:
@@ -536,6 +537,7 @@ async def wishes_handler(
         await message.answer("⚠️ Не удалось получить меню от ИИ.")
         await state.clear()
         return
+    answer += str(ai_text).strip()
     parsed_menu = parse_ingredients_menu(ai_text)
     if not parsed_menu:
         await message.answer(
@@ -552,7 +554,6 @@ async def wishes_handler(
             meals[meal] = []
 
         meals[meal].append(item)
-    answer = ""
 
     for meal_name, ingredients in meals.items():
         total, not_found = calculate_nutrition(ingredients)

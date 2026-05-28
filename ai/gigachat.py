@@ -1,6 +1,5 @@
 import base64
 import uuid
-from multiprocessing.connection import answer_challenge
 
 import requests
 import os
@@ -9,7 +8,12 @@ from typing import Optional
 from dotenv import load_dotenv
 from pathlib import Path
 
-from config_ai import PROMPT_GIGACHAT, CONFIG, menu_user_message
+from config_ai import (
+    PROMPT_GIGACHAT,
+    CONFIG,
+    URL_AI,
+    OAUTH_URL,
+)
 from nutrition.nutrition_calc import (
     calculate_nutrition,
     footer,
@@ -20,10 +24,6 @@ from services.message_ai_parser import (
 )
 
 BASE_DIR = Path(__file__).resolve().parent
-
-# URL endpoints GigaChat API
-OAUTH_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
-CHAT_COMPLETIONS_URL = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
 
 # Кеш для токена (чтобы не запрашивать его каждый раз)
 _cached_token: Optional[str] = None
@@ -39,8 +39,7 @@ logging.basicConfig(
     format="%(levelname)s:%(name)s:%(message)s"
 )
 
-models = ["GigaChat-Pro", "GigaChat-Max", "GigaChat"]
-
+models_ai = ["GigaChat-Pro", "GigaChat-Max", "GigaChat"]
 
 class GigaChatError(Exception):
     """Базовое исключение для ошибок GigaChat API."""
@@ -195,6 +194,25 @@ def upload_gigachat_file(image_path: str, token: str) -> str | None:
 
     return result.get("id")
 
+def send_url_request(
+        url: str,
+        token: str,
+        payload: dict,
+) -> requests.Response:
+
+    response = requests.post(
+        url=url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        verify=False,
+        timeout=60,
+    )
+
+    return response
+
 def send_gigachat_request(
         token: str,
         model: str,
@@ -217,16 +235,8 @@ def send_gigachat_request(
         "max_tokens": 250,
     }
 
-    response = requests.post(
-        "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
-        json=payload,
-        verify=False,
-        timeout=60,
-    )
+    response = send_url_request(url=URL_AI, token=token, payload=payload)
+    print("Делаем запрос к model=", model)
 
     return response
 
@@ -235,33 +245,34 @@ def call_gigachat_vision(image_path: str, token: str) -> str | None:
     file_id = upload_gigachat_file(image_path, token)
 
     if not file_id:
+        logger.debug("File_id: %s", file_id)
         return None
 
-    payload = {
-        "model": "GigaChat-Max",
-        "messages": [
-            {
-                "role": "user",
-                "content": PROMPT_GIGACHAT,
-                "attachments": [file_id],
-            }
-        ],
-    }
+    for model in models_ai:
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": PROMPT_GIGACHAT,
+                    "attachments": [file_id],
+                }
+            ],
+        }
 
-    response = requests.post(
-        "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
-        json=payload,
-        verify=False,
-    )
+        response = send_url_request(url=URL_AI, token=token, payload=payload)
+        logger.info("Делаем запрос к model=%s", model)
+        if response.status_code == 200:
+            break
 
     result = response.json()
-    logger.debug("CHAT:", result)
+    logger.debug("CHAT: %s", result)
 
     if response.status_code != 200:
+        logger.error(
+            "GigaChat vision error %s: %s",
+            response.status_code, result,
+        )
         return None
 
     return result["choices"][0]["message"].get("content")
@@ -271,7 +282,7 @@ def call_gigachat(token: str, mode: str, user_prompt: str) -> str | None:
     cfg = CONFIG.get(mode, {})
     system_content = cfg.get("system_prompt", "")
 
-    for model in models:
+    for model in models_ai:
         response = send_gigachat_request(
             token,
             model,
@@ -324,57 +335,89 @@ def generate_user_prompt_recipe(data: dict) -> str:
     """
     return user_prompt
 
+def generate_user_prompt_menu(data: dict, daily_kcal: float) -> str:
+    user_prompt = f"""
+        Ты нутрициолог и повар.
+        Составь полноценное меню на 1 день.
+
+        Целевая калорийность меню не меньше: {daily_kcal} килокалорий.
+
+        Количество приемов пищи:
+        {data["meal_count"]}
+
+        Дополнительные пожелания:
+        {data["wishes"]}
+
+        Требования:
+        Если приёмов пищи больше трёх,
+        дополнительные называй "Перекус".
+    """
+    return user_prompt
 
 if __name__ == "__main__":
-    data ={}
 
     access_token = get_access_token()
 
-    data["recipe"] = "Хочу приготовить блюдо из курицы"
-    data["persons"] = "на 6 человек"
-    data["kcal"] = "на 1000 килокалорий"
-    data["wishes"] = "Хочу средиземноморскую кухню на обед"
-    user_message = generate_user_prompt_recipe(data)
+    # Данные для user_prompt рецепта
+    # data = {}
+    # data["recipe"] = "Хочу приготовить блюдо из курицы"
+    # data["persons"] = "на 6 человек"
+    # data["kcal"] = "на 1000 килокалорий"
+    # data["wishes"] = "Хочу средиземноморскую кухню на обед"
 
+    # Данные для user_prompt меню
+    # menu = {}
+    # kcal = 1993
+    # menu["meal_count"] = 3
+    # menu["wishes"] = "Нет"
+    #
+    # mode = "menu"
+    #
+    # content = call_gigachat(access_token, mode =mode, user_prompt=user_message)
+    #
+    # if mode == "recipe":
+    #     user_message = generate_user_prompt_recipe(data=data)
+    #     result = clean_recipe_output(content)
+    # else:
+    #     answer = ""
+    #     answer += str(content).strip()
+    #     user_message = generate_user_prompt_menu(menu, daily_kcal=kcal)
+    #     result = content
+    #     parsed_menu = parse_ingredients_menu(result)
+    #
+    #     meals: dict[str, list[dict]] = {}
+    #
+    #     for item in parsed_menu:
+    #         meal = item["meal"]
+    #
+    #         if meal not in meals:
+    #             meals[meal] = []
+    #
+    #         meals[meal].append(item)
+    #
+    #     answer += "\n\n📊 <b>Расчёт КБЖУ:</b>\n"
+    #
+    #     for meal_name, ingredients in meals.items():
+    #         total, not_found = calculate_nutrition(ingredients)
+    #
+    #         answer += "=" * 20
+    #         answer += f"\nПриём пищи: {meal_name}"
+    #         answer += footer(total, "menu")
+    #
+    #         if not_found:
+    #             answer += "\n⚠ Не учтены в расчёте:\n"
+    #             for item in not_found:
+    #                 answer += f"- {item}\n"
+    #
+    #     print(answer)
+    # Данны для запроса определения по фотографии
     # image_url = "https://i.ibb.co/whzjRQ6Z/image.jpg"  # плов
     # image_url = "https://i.ibb.co/sJsXgjSh/download.jpg" ## борщ
 
-    # image_path =  BASE_DIR / "picture/temp.jpg"
-    #
-    # download_image(image_url, image_path)
-    #
-    # content = call_gigachat_vision(image_path, access_token)
-    mode = "menu"
-    content = call_gigachat(access_token, mode =mode, user_prompt=menu_user_message)
-    if mode == "recipe":
-        result = clean_recipe_output(content)
-    else:
-        result = content
-        parsed_menu = parse_ingredients_menu(result)
+    image_path =  "C:\\PyProject\\nutriciolog_bot\\picture\\uploads\\Плов.jpg"
 
-        meals: dict[str, list[dict]] = {}
+    # download_image(image_url, str(image_path))
 
-        for item in parsed_menu:
-            meal = item["meal"]
+    result = call_gigachat_vision(str(image_path), access_token)
 
-            if meal not in meals:
-                meals[meal] = []
-
-            meals[meal].append(item)
-        answer = ""
-
-        for meal_name, ingredients in meals.items():
-            total, not_found = calculate_nutrition(ingredients)
-
-            answer += "=" * 20
-            answer += f"\nПриём пищи: {meal_name}"
-            answer += footer(total, "menu")
-
-            if not_found:
-                answer += "\n⚠ Не учтены в расчёте:\n"
-                for item in not_found:
-                    answer += f"- {item}\n"
-
-        print(answer)
-
-    logger.debug(result)
+    logger.info(result)

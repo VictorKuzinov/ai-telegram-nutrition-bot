@@ -15,6 +15,7 @@ from keyboards import (
     target_keyboard,
     calc_menu_keyboard,
     main_menu_keyboard,
+    profile_menu_keyboard,
 )
 from services.message_builder import (
     build_calc_result_message,
@@ -256,12 +257,19 @@ async def target_callback_handler(
 
     results = calculate_profile_results(profile)
 
+    mode = data.get("mode")
+
+    if mode == "update":
+        result_keyboard = profile_menu_keyboard
+    else:
+        result_keyboard = calc_menu_keyboard
+
     await callback.message.answer(
         build_calc_result_message(
             profile=profile,
             results=results
         ),
-        reply_markup=calc_menu_keyboard
+        reply_markup=result_keyboard
     )
     await state.clear()
     await callback.answer()

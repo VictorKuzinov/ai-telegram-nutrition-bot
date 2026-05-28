@@ -1,5 +1,6 @@
 import re
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -73,6 +74,12 @@ SPECIAL_FORMS: dict[str, str] = {
     "свеклы": "свекла",
     "чеснока": "чеснок",
 }
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s:%(name)s:%(message)s"
+)
 
 def build_index(data: list[IngredientRecord]) -> dict[str, IngredientRecord]:
     """
@@ -253,6 +260,14 @@ def calculate_nutrition(parsed_ingredients: ParsedIngredients) -> tuple[Nutritio
             total_fat += item["fat_per_100g"] * coef
             total_carbs += item["carbs_per_100g"] * coef
             total_weight += grams
+            logger.debug(
+                "FOUND PRODUCT: %s | kcal=%s protein=%s fat=%s carbs=%s",
+                item,
+                item["kcal_per_100g"],
+                item["protein_per_100g"],
+                item["fat_per_100g"],
+                item["carbs_per_100g"],
+            )
         else:
             not_found.append(name)
 
