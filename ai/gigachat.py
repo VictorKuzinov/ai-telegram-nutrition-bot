@@ -39,7 +39,18 @@ logging.basicConfig(
     format="%(levelname)s:%(name)s:%(message)s"
 )
 
-models_ai = ["GigaChat-Pro", "GigaChat-Max", "GigaChat"]
+models_ai_image = [
+    "GigaChat-2-Pro",
+    "GigaChat-2-Max",
+    "GigaChat-Pro",
+    "GigaChat-Max"
+]
+
+models_ai_chat = [
+    "GigaChat-2-Max",
+    "GigaChat-Max",
+    "GigaChat"
+]
 
 class GigaChatError(Exception):
     """Базовое исключение для ошибок GigaChat API."""
@@ -248,7 +259,7 @@ def call_gigachat_vision(image_path: str, token: str) -> str | None:
         logger.debug("File_id: %s", file_id)
         return None
 
-    for model in models_ai:
+    for model in models_ai_image:
         payload = {
             "model": model,
             "messages": [
@@ -262,6 +273,8 @@ def call_gigachat_vision(image_path: str, token: str) -> str | None:
 
         response = send_url_request(url=URL_AI, token=token, payload=payload)
         logger.info("Делаем запрос к model=%s", model)
+        print(f"Модель: {model} - {response.status_code}")
+        print(response.text)
         if response.status_code == 200:
             break
 
@@ -282,7 +295,7 @@ def call_gigachat(token: str, mode: str, user_prompt: str) -> str | None:
     cfg = CONFIG.get(mode, {})
     system_content = cfg.get("system_prompt", "")
 
-    for model in models_ai:
+    for model in models_ai_chat:
         response = send_gigachat_request(
             token,
             model,

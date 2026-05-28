@@ -20,6 +20,7 @@ urllib3.disable_warnings(
     urllib3.exceptions.InsecureRequestWarning
 )
 
+
 load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")

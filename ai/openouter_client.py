@@ -21,9 +21,12 @@ from nutrition.nutrition_cache import (
 )
 from nutrition.nutrition_calc import (
     calculate_nutrition,
-    footer_recipe,
+    footer,
 )
-from services.message_ai_parser import parse_ingredients
+from services.message_ai_parser import (
+    parse_ingredients_recipe,
+    parse_ingredients_menu,
+)
 from services.message_builder import (
     filter_user_message,
     clean_vision_output,
@@ -168,10 +171,10 @@ def handle_recipe_mode(ai_text: str) -> str:
         return "Ошибка получения данных от ИИ"
 
     answer = ai_text.strip()
-    parsed = parse_ingredients(answer)
+    parsed = parse_ingredients_recipe(answer)
 
     total, not_found = calculate_nutrition(parsed)
-    answer += "\n" + footer_recipe(total)
+    answer += "\n" + footer(total, "recipe")
 
     if not_found:
         answer += "\n⚠ Не учтены в расчёте:\n"
@@ -227,7 +230,7 @@ def handle_photo_mode(image_url: str) -> str:
     if not cleaned.strip():
         return "Не удалось извлечь ингредиенты с фото."
 
-    parsed = parse_ingredients(cleaned)
+    parsed = parse_ingredients_recipe(cleaned)
 
     if not parsed:
         return "Не удалось разобрать ингредиенты."
@@ -237,7 +240,7 @@ def handle_photo_mode(image_url: str) -> str:
     answer = "Распознано по фото:\n"
     answer += cleaned
     answer += "\n"
-    answer += footer_recipe(total)
+    answer += footer(total, "photo")
 
     if not_found:
         answer += "\n⚠ Не учтены в расчёте:\n"
@@ -284,7 +287,7 @@ def main() -> None:
 
     В Telegram-боте вместо этой функции будут использоваться обработчики сообщений.
     """
-    mode = "recipe"
+    mode = "photo"
     data={}
 
     if mode == "recipe":
