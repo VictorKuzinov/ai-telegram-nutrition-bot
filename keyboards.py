@@ -126,3 +126,34 @@ profile_menu_keyboard = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True,
 )
+
+confirm_save_keyboard = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="✅ Сохранить",
+                callback_data="save_food_yes",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="❌ Не сохранять",
+                callback_data="save_food_no",
+            ),
+        ],
+    ]
+)
+
+change_diary_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="➕ Добавить"),
+            KeyboardButton(text="✏️ Изменить"),
+        ],
+        [
+            KeyboardButton(text="🗑 Удалить"),
+            KeyboardButton(text="⬅️ Назад"),
+        ],
+    ],
+    resize_keyboard=True,
+)

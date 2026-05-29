@@ -18,10 +18,14 @@ from keyboards import (
     ai_menu_keyboard,
     confirm_food_keyboard,
     main_menu_keyboard,
+    confirm_save_keyboard,
 )
 from nutrition.nutrition_calc import (
     calculate_nutrition,
-    footer, calc_bmr, calc_base_calories, calc_energy_total,
+    footer,
+    calc_bmr,
+    calc_base_calories,
+    calc_energy_total,
 )
 from nutrition.nutrition_cache import (
     cache_path,
@@ -29,7 +33,8 @@ from nutrition.nutrition_cache import (
 )
 from services.message_ai_parser import (
     clean_recipe_output,
-    parse_ingredients_recipe, parse_ingredients_menu
+    parse_ingredients_recipe,
+    parse_ingredients_menu
 )
 from states import PhotoForm, RecipeForm, MenuForm
 
@@ -89,10 +94,6 @@ async def process_food_photo_handler(
 
     access_token = get_access_token()
 
-    content = call_gigachat_vision(
-        str(image_path),
-        access_token
-    )
     content = call_gigachat_vision(
         str(image_path),
         access_token,
@@ -262,20 +263,81 @@ async def weight_handler(
             "carbs": total["carbs"],
             "source": "photo",
         }
-
-        create_food_log(food_log_data)
+        await state.update_data(
+            food_log_data=food_log_data,
+            calculated_total=total,
+        )
+        await state.set_state(PhotoForm.confirm_save)
 
         await message.answer(
-            f"✅ Блюдо сохранено:\n\n"
             f"🍽 {food_title}\n"
-            f"⚖️ Вес: {weight} г"
+            f"⚖️ Вес: {weight} г\n"
+            + footer(total, "recipe")
         )
 
         await message.answer(
-            footer(total, "recipe")
+            "Добавить это блюдо в дневник?",
+            reply_markup=confirm_save_keyboard,
         )
+
+@router.callback_query(PhotoForm.confirm_save)
+async def confirm_save_handler(
+        callback: CallbackQuery,
+        state: FSMContext,
+) -> None:
+    data = await state.get_data()
+
+    if callback.data == "save_food_yes":
+        food_log_data = data.get("food_log_data")
+
+        if food_log_data:
+            create_food_log(food_log_data)
+            await callback.message.answer(
+                f"✅ Блюдо сохранено в Ваш дневник:\n\n"
+                f"🍽 {food_log_data['food_name']}\n"
+                f"⚖️ Вес: {food_log_data['weight']} г"
+            )
+            total = data.get("calculated_total")
+            await callback.message.answer(
+                 footer(total, "recipe")
+            )
+
+    elif callback.data == "save_food_no":
+        await callback.message.answer("👌 Не сохраняю.")
 
     await state.clear()
+    await callback.answer()
+
+@router.callback_query(PhotoForm.confirm_save)
+async def confirm_save_handler(
+    callback: CallbackQuery,
+    state: FSMContext,
+) -> None:
+    data = await state.get_data()
+
+    if callback.data == "save_food_yes":
+        food_log_data = data.get("food_log_data")
+        total = data.get("calculated_total")
+
+        if food_log_data:
+            create_food_log(food_log_data)
+
+            await callback.message.answer(
+                f"✅ Блюдо сохранено в Ваш дневник:\n\n"
+                f"🍽 {food_log_data['food_name']}\n"
+                f"⚖️ Вес: {food_log_data['weight']} г"
+            )
+
+            if total:
+                await callback.message.answer(
+                    footer(total, "recipe")
+                )
+
+    elif callback.data == "save_food_no":
+        await callback.message.answer("👌 Не сохраняю.")
+
+    await state.clear()
+    await callback.answer()
 
 @router.message(PhotoForm.edit_ingredient_name)
 async def edit_ingredient_name_handler(
@@ -398,7 +460,7 @@ def generate_user_prompt_menu(data: dict, daily_kcal: float) -> str:
         Ты нутрициолог и повар.
 
         Составь меню на день
-        пртмерно на {daily_kcal}
+        примерно на {daily_kcal}
 
         Количество приемов пищи:
         {data["meal_count"]}

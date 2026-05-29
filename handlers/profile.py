@@ -13,7 +13,7 @@ from nutrition.nutrition_calc import (
     calc_energy_total,
     calc_base_calories,
 )
-from states import CalcForm, ProfileForm
+from states import ProfileForm
 from validators import validate_weight
 
 router = Router()
@@ -22,13 +22,13 @@ router = Router()
 async def profile_menu_handler(
     message: Message,
 ) -> None:
-    await profile_follow_handler(message)
+    await profile_follow_handler(message, message.from_user.id)
 
 @router.message(Command('profile'))
 async def profile_handler(
     message: Message,
 ) -> None:
-    await profile_follow_handler(message)
+    await profile_follow_handler(message, message.from_user.id)
 
 async def profile_follow_handler(
     message: Message,
