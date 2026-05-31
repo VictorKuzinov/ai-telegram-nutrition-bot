@@ -1,8 +1,6 @@
-from IPython.core.completer import not_found
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
-from numpy.random import set_state
 
 from db.repositories import (
     get_today_food_logs,
