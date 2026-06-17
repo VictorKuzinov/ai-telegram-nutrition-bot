@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from services.ingredient_normalization import SPECIAL_FORMS
 from services.message_ai_parser import ParsedIngredients
 
 NutritionTotal = dict[str, float]
@@ -51,28 +52,6 @@ TARGETS = {
         "protein_factor": 2.0,
         "fat_factor": 1.0,
     },
-}
-
-SPECIAL_FORMS: dict[str, str] = {
-    "огурцы": "огурец",
-    "помидоры": "помидор",
-    "томаты": "томат",
-    "оливки": "оливка",
-    "маслины": "маслина",
-    "яйца": "яйцо",
-    "перцы": "перец",
-    "яблоки": "яблоко",
-    "бананы": "банан",
-    "апельсины": "апельсин",
-    "лимоны": "лимон",
-    "грибы": "гриб",
-    "шампиньоны": "шампиньон",
-    "картофелины": "картофель",
-    "картошки": "картофель",
-    "моркови": "морковь",
-    "морковки": "морковь",
-    "свеклы": "свекла",
-    "чеснока": "чеснок",
 }
 
 logger = logging.getLogger(__name__)
@@ -204,6 +183,7 @@ def normalize_name(name: str) -> str:
         name = name.strip()
 
     name = re.sub(r"\s+", " ", name)
+    name = name.strip()
     name = SPECIAL_FORMS.get(name, name)
 
     return name.strip()
@@ -370,3 +350,4 @@ def calculate_nutrition_menu(parsed_ingredients: ParsedIngredients) -> tuple[Nut
     }
 
     return total, not_found
+

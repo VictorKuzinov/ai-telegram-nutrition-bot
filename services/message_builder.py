@@ -1,4 +1,5 @@
 import re
+from typing import TypedDict
 
 from nutrition.nutrition_calc import (
     ACTIVITY_LEVELS,
@@ -10,7 +11,14 @@ from nutrition.nutrition_calc import (
 )
 
 
-def calculate_profile_results(profile) -> dict:
+class ProfileResults(TypedDict):
+    bmr: float
+    base_calories: float
+    total_energy: float
+    bju: float
+
+
+def calculate_profile_results(profile) -> ProfileResults:
     bmr = calc_bmr(
         gender=profile.gender,
         weight=profile.weight,

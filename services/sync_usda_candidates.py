@@ -1,14 +1,24 @@
 import os
 import json
-
 import requests
 import dotenv
 from pathlib import Path
 
-from nutrition.nutrition_cache import load_cache, DATA_DIR, cache_path
+import pymorphy3
+from deep_translator import GoogleTranslator
+
+from nutrition.nutrition_cache import (
+    load_cache,
+    DATA_DIR,
+    cache_path
+)
+from services.ingredient_lookup import build_aliases_index
+from services.ingredient_normalization import NO_PLURAL_WORDS
+
 dotenv.load_dotenv()
 
 API_KEY = os.getenv("USDA_API_KEY")
+morph = pymorphy3.MorphAnalyzer()
 
 def get_cache_candidates(path: Path, min_lookup_count: int) -> list:
     candidates = []
@@ -18,18 +28,90 @@ def get_cache_candidates(path: Path, min_lookup_count: int) -> list:
             item["migrated"] == False:
             candidates.append(item)
     return candidates
+#
+# def prepare_for_main_db_old(records):
+#     for record in records:
+#         confirmation = ""
+#         while confirmation.lower() not in ("yes", "y", "да"):
+#             record["name_en"] = input(f"Введите английский перевод слова - {record['name_ru']} в единственном числе: ")
+#             record["aliases_en"] = input(f"Введите английский перевод слова - {record['name_ru']} во множественном числе: ")
+#             record["aliases_ru"] = input(f"Введите значение слова: - {record['name_ru']} во множественном числе: ")
+#             print(f"Вы ввели значение слова: {record['name_ru']} - во множественном числе: {record['aliases_ru']}"
+#                   f" и его перевод на английский во множественном числе: {record['aliases_en']}, английский превод в единственном числе: {record["name_en"]}", sep="\n")
+#             confirmation = input("Вы подтверждаете (Yes)?")
+#     return records
 
-def prepare_for_main_db(records):
+def translate_to_en(name_ru: str) -> str:
+    translated = (GoogleTranslator(source='auto', target='en').
+        translate(name_ru)
+    )
+
+    return translated
+
+def make_plural_ru(name_ru: str) -> str:
+    name_ru = name_ru.lower().strip()
+
+    if name_ru in NO_PLURAL_WORDS:
+        return name_ru
+
+    words = name_ru.lower().strip().split()
+
+    plural_words = []
+
+    for word in words:
+        parsed = morph.parse(word)[0]
+
+        plural = parsed.inflect({"plur"})
+
+        if plural:
+            plural_words.append(plural.word)
+        else:
+            plural_words.append(word)
+
+    return " ".join(plural_words)
+
+def prepare_for_main_db(records, aliases_index):
+    prepared_records = []
+
     for record in records:
-        confirmation = ""
-        while confirmation.lower() not in ("yes", "y", "да"):
-            record["name_en"] = input(f"Введите английский перевод слова - {record['name_ru']} в единственном числе: ")
-            record["aliases_en"] = input(f"Введите английский перевод слова - {record['name_ru']} во множественном числе: ")
-            record["aliases_ru"] = input(f"Введите значение слова: - {record['name_ru']} во множественном числе: ")
-            print(f"Вы ввели значение слова: {record['name_ru']} - во множественном числе: {record['aliases_ru']}"
-                  f" и его перевод на английский во множественном числе: {record['aliases_en']}, английский превод в единственном числе: {record["name_en"]}", sep="\n")
-            confirmation = input("Вы подтверждаете (Yes)?")
-    return records
+        name_ru = record["name_ru"]
+        normalized_name = name_ru.lower().strip()
+
+        if normalized_name in aliases_index:
+            print(f"Уже есть в базе: {name_ru} -> {aliases_index[normalized_name]}")
+            continue
+
+        default_name_en = translate_to_en(name_ru)
+        default_aliases_ru = make_plural_ru(name_ru)
+        default_aliases_en = translate_to_en(default_aliases_ru)
+
+        while True:
+            print("\nНовый ингредиент:")
+            print(f"Русское название: {name_ru}")
+            print(f"EN ед. число: {default_name_en}")
+            print(f"RU мн. число: {default_aliases_ru}")
+            print(f"EN мн. число: {default_aliases_en}")
+
+            confirmation = input("Подтвердить? [Y/n]: ").strip().lower()
+
+            if confirmation in ("", "y", "yes", "да", "д"):
+                record["name_en"] = default_name_en
+                record["aliases_ru"] = [default_aliases_ru]
+                record["aliases_en"] = [default_aliases_en]
+                prepared_records.append(record)
+                break
+
+            record["name_en"] = input("Введите EN ед. число: ").strip()
+            record["aliases_ru"] = [input("Введите RU мн. число: ").strip()]
+            record["aliases_en"] = [input("Введите EN мн. число: ").strip()]
+
+            confirmation = input("Теперь подтвердить? [Y/n]: ").strip().lower()
+
+            if confirmation in ("", "y", "yes", "да", "д"):
+                prepared_records.append(record)
+                break
+
+    return prepared_records
 
 def fetch_usda_data(query: str, api_key = API_KEY) -> dict | None:
     url = "https://api.nal.usda.gov/fdc/v1/foods/search"
@@ -44,8 +126,6 @@ def fetch_usda_data(query: str, api_key = API_KEY) -> dict | None:
     if response.ok:
         data = response.json()
         foods = data.get("foods", [])
-        # with open(query, "w", encoding="utf-8") as f:
-        #     json.dump(foods, f, ensure_ascii=False, indent=2)
         if not foods:
             return None
         selected_food = foods[0]
@@ -105,7 +185,7 @@ def append_to_main_db(item: dict) -> None:
     try:
         with open(DATA_DIR / "ingredients.json", 'r', encoding='utf-8') as f:
             ingredient_data = json.load(f)
-            print(f"Клличество ингедиенов равно: {len(ingredient_data)}")
+            print(f"Количество ингредиентов равно: {len(ingredient_data)}")
     except (FileNotFoundError, json.JSONDecodeError):
         ingredient_data = []
     for record in ingredient_data:
@@ -141,7 +221,12 @@ def main():
         print("Нет кандидатов")
         return
 
-    prepared = prepare_for_main_db(candidates)
+    with open(DATA_DIR / "ingredients.json", "r", encoding="utf-8") as f:
+        ingredient_data = json.load(f)
+
+    aliases_index = build_aliases_index(ingredient_data)
+
+    prepared = prepare_for_main_db(candidates, aliases_index)
 
     for item in prepared:
         usda_data = fetch_usda_data(item["name_en"])

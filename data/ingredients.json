@@ -896,7 +896,8 @@
     "name_ru": "хлеб ржаной",
     "name_en": "rye bread",
     "aliases_ru": [
-      "черный хлеб"
+      "черный хлеб",
+      "хлеб черный"
     ],
     "aliases_en": [
       "black bread"
@@ -1149,7 +1150,8 @@
     "name_ru": "помидор",
     "name_en": "tomato",
     "aliases_ru": [
-      "томат"
+      "томат",
+      "помидоры крупные"
     ],
     "aliases_en": [
       "tomatoes"
@@ -2686,7 +2688,7 @@
     "name_ru": "грибной суп",
     "name_en": "mushroom soup",
     "aliases_ru": [
-      "суп грибной"
+      "суп грибной", "суп_с_грибами"
     ],
     "aliases_en": [
       "mushroom soups"
@@ -2814,30 +2816,185 @@
     "source": "local"
   },
   {
-  "id": "okroshka",
-  "name_ru": "окрошка",
-  "name_en": "okroshka",
-  "aliases_ru": [
-    "окрошка на кефире",
-    "окрошка на квасе"
-  ],
-  "aliases_en": [
-    "okroshka",
-    "cold soup"
-  ],
-  "kcal_per_100g": 68,
-  "protein_per_100g": 3.5,
-  "fat_per_100g": 3.8,
-  "carbs_per_100g": 5.0,
-  "category": "soup",
-  "region": [
-    "ru",
-    "eu"
-  ],
-  "unit": "g",
-  "source": "manual",
-  "usda_id": null,
-  "lookup_count": 1,
-  "migrated": true
-}
+    "id": "okroshka",
+    "name_ru": "окрошка",
+    "name_en": "okroshka",
+    "aliases_ru": [
+      "окрошка на кефире",
+      "окрошка на квасе"
+    ],
+    "aliases_en": [
+      "okroshka",
+      "cold soup"
+    ],
+    "kcal_per_100g": 68,
+    "protein_per_100g": 3.5,
+    "fat_per_100g": 3.8,
+    "carbs_per_100g": 5.0,
+    "category": "soup",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "manual",
+    "usda_id": null,
+    "lookup_count": 1,
+    "migrated": true
+  },
+  {
+    "id": "lamb",
+    "name_ru": "баранина",
+    "name_en": "lamb",
+    "aliases_ru": [
+      "баранина", "баранина на кости",
+      "баранины", "свежая баранина"
+    ],
+    "aliases_en": [
+      "lambs"
+    ],
+    "kcal_per_100g": 264,
+    "protein_per_100g": 27.36,
+    "fat_per_100g": 16.27,
+    "carbs_per_100g": 0,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "leaf_lettuce",
+    "name_ru": "салат листовой",
+    "name_en": "leaf lettuce",
+    "aliases_ru": [
+      "салат листовой", "салаты листовые"
+    ],
+    "aliases_en": [
+      "leaf lettuces"
+    ],
+    "kcal_per_100g": 62.0,
+    "protein_per_100g": 1.36,
+    "fat_per_100g": 0.15,
+    "carbs_per_100g": 2.87,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "avocado",
+    "name_ru": "авокадо",
+    "name_en": "avocado",
+    "aliases_ru": [
+      "авокадо"
+    ],
+    "aliases_en": [
+      "avocado"
+    ],
+    "kcal_per_100g": 427,
+    "protein_per_100g": 1.9,
+    "fat_per_100g": 43.33,
+    "carbs_per_100g": 7.36,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "champignon_mushroom",
+    "name_ru": "шампиньон",
+    "name_en": "champignon mushroom",
+    "aliases_ru": [
+      "шампиньон", "шампиньоны"
+    ],
+    "aliases_en": [
+      "champignon mushrooms"
+    ],
+    "kcal_per_100g": 222,
+    "protein_per_100g": 4.63,
+    "fat_per_100g": 12.91,
+    "carbs_per_100g": 21.9,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "fish_sauce",
+    "name_ru": "рыбный соус",
+    "name_en": "fish sauce",
+    "aliases_ru": [
+      "рыбный соус", "рыбные соусы"
+    ],
+    "aliases_en": [
+      "fish sauces"
+    ],
+    "kcal_per_100g": 35,
+    "protein_per_100g": 5.06,
+    "fat_per_100g": 0.01,
+    "carbs_per_100g": 3.64,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "lime_juice",
+    "name_ru": "сок лайма",
+    "name_en": "lime juice",
+    "aliases_ru": [
+      "сок лайма", "соки лайма"
+    ],
+    "aliases_en": [
+      "lime juices"
+    ],
+    "kcal_per_100g": 25.0,
+    "protein_per_100g": 0.42,
+    "fat_per_100g": 0.07,
+    "carbs_per_100g": 8.42,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "starch",
+    "name_ru": "крахмал",
+    "name_en": "starch",
+    "aliases_ru": [
+      "крахмал"
+    ],
+    "aliases_en": [
+      "starches"
+    ],
+    "kcal_per_100g": 1000.0,
+    "protein_per_100g": 3.34,
+    "fat_per_100g": 2.65,
+    "carbs_per_100g": 50.5,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  }
 ]

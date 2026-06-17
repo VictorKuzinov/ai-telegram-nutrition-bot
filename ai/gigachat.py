@@ -1,6 +1,5 @@
 import base64
 import uuid
-
 import requests
 import os
 import logging
@@ -13,6 +12,8 @@ from config_ai import (
     CONFIG,
     URL_AI,
     OAUTH_URL,
+    generate_user_prompt_recipe,
+    generate_user_prompt_menu,
 )
 from nutrition.nutrition_calc import (
     calculate_nutrition,
@@ -47,8 +48,6 @@ models_ai_image = [
 ]
 
 models_ai_chat = [
-    "GigaChat-2-Max",
-    "GigaChat-Max",
     "GigaChat"
 ]
 
@@ -206,30 +205,33 @@ def upload_gigachat_file(image_path: str, token: str) -> str | None:
     return result.get("id")
 
 def send_url_request(
-        url: str,
-        token: str,
-        payload: dict,
-) -> requests.Response:
+    url: str,
+    token: str,
+    payload: dict,
+) -> requests.Response | None:
+    try:
+        response = requests.post(
+            url=url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            verify=False,
+            timeout=60,
+        )
+        return response
 
-    response = requests.post(
-        url=url,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
-        json=payload,
-        verify=False,
-        timeout=60,
-    )
-
-    return response
+    except requests.RequestException as e:
+        logger.error("GigaChat request network error: %s", e)
+        return None
 
 def send_gigachat_request(
         token: str,
         model: str,
         system_prompt: str,
         user_prompt: str,
-) -> requests.Response:
+) -> requests.Response|None:
     payload = {
         "model": model,
         "messages": [
@@ -302,7 +304,8 @@ def call_gigachat(token: str, mode: str, user_prompt: str) -> str | None:
             system_content,
             user_prompt,
         )
-
+        if response is None:
+            continue
         if response.status_code == 200:
             break
 
@@ -321,116 +324,83 @@ def call_gigachat(token: str, mode: str, user_prompt: str) -> str | None:
 
     return result["choices"][0]["message"].get("content")
 
-def generate_user_prompt_recipe(data: dict) -> str:
-    user_prompt = f"""
-        Ты нутрициолог и повар.
-
-        Составь рецепт блюда.
-
-        Основной запрос:
-        {data["recipe"]}
-
-        Количество человек:
-        {data["persons"]}
-
-        Ограничение по калориям:
-        {data["kcal"]}
-
-        Дополнительные пожелания:
-        {data["wishes"]}
-
-        Требования:
-        - краткий формат;
-        - список ингредиентов;
-        - пошаговое приготовление;
-        - примерная калорийность;
-        - без длинных вступлений.
-    """
-    return user_prompt
-
-def generate_user_prompt_menu(data: dict, daily_kcal: float) -> str:
-    user_prompt = f"""
-        Ты нутрициолог и повар.
-        Составь полноценное меню на 1 день.
-
-        Целевая калорийность меню не меньше: {daily_kcal} килокалорий.
-
-        Количество приемов пищи:
-        {data["meal_count"]}
-
-        Дополнительные пожелания:
-        {data["wishes"]}
-
-        Требования:
-        Если приёмов пищи больше трёх,
-        дополнительные называй "Перекус".
-    """
-    return user_prompt
 
 if __name__ == "__main__":
 
     access_token = get_access_token()
 
     # Данные для user_prompt рецепта
-    # data = {}
-    # data["recipe"] = "Хочу приготовить блюдо из курицы"
-    # data["persons"] = "на 6 человек"
-    # data["kcal"] = "на 1000 килокалорий"
-    # data["wishes"] = "Хочу средиземноморскую кухню на обед"
+    data = {}
+    data["recipe"] = "Суп с грибами"
+    data["persons"] = "на 6 человек"
+    data["kcal"] = "на 1000 килокалорий"
+    data["wishes"] = "Нет"
 
     # Данные для user_prompt меню
-    # menu = {}
-    # kcal = 1993
-    # menu["meal_count"] = 3
-    # menu["wishes"] = "Нет"
+    menu = {}
+    kcal = 1993
+    menu["meal_count"] = 3
+    menu["wishes"] = "Нет"
+
+    mode = "recipe"
+
+
+    if mode == "recipe":
+    #     with open(DATA_DIR / "ingredients.json", "r", encoding="utf-8") as f:
+    #         ingredient_data = json.load(f)
     #
-    # mode = "menu"
+    #     aliases_index = build_aliases_index(ingredient_data)
     #
-    # content = call_gigachat(access_token, mode =mode, user_prompt=user_message)
-    #
-    # if mode == "recipe":
-    #     user_message = generate_user_prompt_recipe(data=data)
-    #     result = clean_recipe_output(content)
-    # else:
-    #     answer = ""
-    #     answer += str(content).strip()
-    #     user_message = generate_user_prompt_menu(menu, daily_kcal=kcal)
-    #     result = content
-    #     parsed_menu = parse_ingredients_menu(result)
-    #
-    #     meals: dict[str, list[dict]] = {}
-    #
-    #     for item in parsed_menu:
-    #         meal = item["meal"]
-    #
-    #         if meal not in meals:
-    #             meals[meal] = []
-    #
-    #         meals[meal].append(item)
-    #
-    #     answer += "\n\n📊 <b>Расчёт КБЖУ:</b>\n"
-    #
-    #     for meal_name, ingredients in meals.items():
-    #         total, not_found = calculate_nutrition(ingredients)
-    #
-    #         answer += "=" * 20
-    #         answer += f"\nПриём пищи: {meal_name}"
-    #         answer += footer(total, "menu")
-    #
-    #         if not_found:
-    #             answer += "\n⚠ Не учтены в расчёте:\n"
-    #             for item in not_found:
-    #                 answer += f"- {item}\n"
-    #
-    #     print(answer)
-    # Данны для запроса определения по фотографии
+    #     content = find_food_by_name(data["recipe"], aliases_index)
+
+        user_message = generate_user_prompt_recipe(data=data)
+        content = call_gigachat(access_token, mode=mode, user_prompt=user_message)
+        print(content)
+        # answer = str(content).strip()
+        result = clean_recipe_output(content)
+        print(result)
+    else:
+        answer = ""
+
+        user_message = generate_user_prompt_menu(menu, daily_kcal=kcal)
+        content = call_gigachat(access_token, mode=mode, user_prompt=user_message)
+        answer += str(content).strip()
+        result = content
+        parsed_menu = parse_ingredients_menu(result)
+
+        meals: dict[str, list[dict]] = {}
+
+        for item in parsed_menu:
+            meal = item["meal"]
+
+            if meal not in meals:
+                meals[meal] = []
+
+            meals[meal].append(item)
+
+        answer += "\n\n📊 <b>Расчёт КБЖУ:</b>\n"
+
+        for meal_name, ingredients in meals.items():
+            total, not_found = calculate_nutrition(ingredients)
+
+            answer += "=" * 20
+            answer += f"\nПриём пищи: {meal_name}"
+            answer += footer(total, "menu")
+
+            if not_found:
+                answer += "\n⚠ Не учтены в расчёте:\n"
+                for item in not_found:
+                    answer += f"- {item}\n"
+
+        print(answer)
+    # # Данные для запроса определения по фотографии
     # image_url = "https://i.ibb.co/whzjRQ6Z/image.jpg"  # плов
-    # image_url = "https://i.ibb.co/sJsXgjSh/download.jpg" ## борщ
-
-    image_path =  "C:\\PyProject\\nutriciolog_bot\\picture\\uploads\\Плов.jpg"
-
+    # # image_url = "https://i.ibb.co/sJsXgjSh/download.jpg" ## борщ
+    #
+    # image_path =  "D://AI//projects//ai-telegram-nutrition-bot//picture//uploads//plow.jpg"
+    #
     # download_image(image_url, str(image_path))
-
-    result = call_gigachat_vision(str(image_path), access_token)
-
-    logger.info(result)
+    #
+    # result = call_gigachat_vision(str(image_path), access_token)
+    #
+    # logger.info(result)

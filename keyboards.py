@@ -106,7 +106,10 @@ diary_menu_keyboard = ReplyKeyboardMarkup(
             KeyboardButton(text="🔥 Остаток"),
         ],
         [
+            KeyboardButton(text="📊 Статистика"),
             KeyboardButton(text="📅 История"),
+        ],
+        [
             KeyboardButton(text="⬅️ Назад"),
         ],
     ],
@@ -152,7 +155,20 @@ change_diary_keyboard = ReplyKeyboardMarkup(
         ],
         [
             KeyboardButton(text="🗑 Удалить"),
-            KeyboardButton(text="⬅️ Назад"),
+            KeyboardButton(text="⬅️ К дневнику"),
+        ],
+    ],
+    resize_keyboard=True,
+)
+
+statistics_menu_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="📊 За 7 дней"),
+            KeyboardButton(text="📈 За 30 дней"),
+        ],
+        [
+            KeyboardButton(text="⬅️ К дневнику"),
         ],
     ],
     resize_keyboard=True,

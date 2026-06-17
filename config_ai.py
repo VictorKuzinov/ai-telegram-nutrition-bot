@@ -152,6 +152,74 @@ CONFIG = {
         """,
         "temperature": 0.3,
         "max_tokens": 400,
+    },
+    "food_match": {
+        "system_prompt": """
+            Ты сопоставляешь название блюда пользователя с блюдами из базы.
+            
+            Твоя задача:
+            - выбрать одно подходящее блюдо только из переданного списка кандидатов;
+            - не придумывать новые блюда;
+            - не составлять рецепт;
+            - не перечислять ингредиенты;
+            - не делать расчёты;
+            - вернуть только JSON.
+            
+            Если подходящего блюда нет, верни action="not_found".
+            
+            Формат ответа строго JSON:
+            {
+              "matched_id": null,
+              "matched_name_ru": null,
+              "suggested_alias_ru": "",
+              "action": "add_alias",
+              "reason": ""
+            }
+        """,
+        "temperature": 0.3,
+        "max_tokens": 400,
+    },
+    "dish": {
+        "system_prompt": """
+    Ты помощник по питанию.
+
+    Твоя задача — оценить КБЖУ блюда по названию пользователя.
+
+    Верни только валидный JSON.
+    Не добавляй Markdown.
+    Не добавляй текст вне JSON.
+
+    Обязательные поля:
+    - name_ru
+    - total_weight_g
+    - nutrition_per_100g.kcal
+    - nutrition_per_100g.protein
+    - nutrition_per_100g.fat
+    - nutrition_per_100g.carbs
+
+    Правила:
+    - nutrition_per_100g — оценка на 100 г готового блюда.
+    - total_weight_g — примерный вес готового блюда.
+    - Все значения КБЖУ должны быть числами.
+    - kcal должен быть больше 0.
+    - protein, fat, carbs должны быть не меньше 0.
+    - Если точных данных нет, дай реалистичную приблизительную оценку.
+    - Не возвращай нули для съедобного блюда.
+
+    Формат ответа:
+    {
+      "name_ru": "название блюда",
+      "total_weight_g": 0,
+      "nutrition_per_100g": {
+        "kcal": 0,
+        "protein": 0,
+        "fat": 0,
+        "carbs": 0
+      }
+    }
+    """,
+        "temperature": 0.1,
+        "max_tokens": 300,
     }
 }
 
@@ -204,3 +272,51 @@ PROMPT_GIGACHAT = """
 """
 
 reserve_model = "arcee-ai/trinity-large-preview:free"
+
+
+def generate_user_prompt_recipe(data: dict) -> str:
+    user_prompt = f"""
+        Ты нутрициолог и повар.
+
+        Составь рецепт блюда.
+
+        Основной запрос:
+        {data["recipe"]}
+
+        Количество человек:
+        {data["persons"]}
+
+        Ограничение по калориям:
+        {data["kcal"]}
+
+        Дополнительные пожелания:
+        {data["wishes"]}
+
+        Требования:
+        - краткий формат;
+        - список ингредиентов;
+        - пошаговое приготовление;
+        - примерная калорийность;
+        - б`ез длинных вступлений.
+    """
+    return user_prompt
+
+
+def generate_user_prompt_menu(data: dict, daily_kcal: float) -> str:
+    user_prompt = f"""
+        Ты нутрициолог и повар.
+
+        Составь меню на день
+        примерно на {daily_kcal}
+
+        Количество приемов пищи:
+        {data["meal_count"]}
+
+        Дополнительные пожелания:
+        {data["wishes"]}
+
+        Требования:
+        Если приёмов пищи больше трёх,
+        дополнительные называй "Перекус".
+    """
+    return user_prompt

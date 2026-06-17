@@ -134,3 +134,51 @@ def get_food_logs_for_period(telegram_id, days=7) -> list:
         raise
     finally:
         session.close()
+
+def get_food_log_by_id(log_id: int) -> FoodLog | None:
+    session = SessionLocal()
+    try:
+        return session.get(FoodLog, log_id)
+    finally:
+        session.close()
+
+def update_food_log(log_id: int, updates: dict) -> FoodLog | None:
+    session = SessionLocal()
+    try:
+        food = session.get(FoodLog, log_id)
+
+        if food is None:
+            return None
+
+        for key, value in updates.items():
+            setattr(food, key, value)
+
+        session.commit()
+        session.refresh(food)
+
+        return food
+
+    except SQLAlchemyError:
+        session.rollback()
+        raise
+
+    finally:
+        session.close()
+
+def delete_food_log(log_id: int) -> None:
+    session = SessionLocal()
+    try:
+        food = session.get(FoodLog, log_id)
+
+        if food is None:
+            return
+
+        session.delete(food)
+        session.commit()
+
+    except SQLAlchemyError:
+        session.rollback()
+        raise
+
+    finally:
+        session.close()

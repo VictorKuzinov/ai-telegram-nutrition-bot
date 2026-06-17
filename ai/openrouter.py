@@ -1,11 +1,11 @@
 import os
-import base64
-import mimetypes
 import requests
 
 from dotenv import load_dotenv
 
+from ai.local_model_vl import call_local_vision
 from config_ai import PROMPT_GIGACHAT
+from services.image_utils import image_to_data_url
 
 load_dotenv()
 
@@ -17,18 +17,10 @@ MODELS = [
     "google/gemma-4-31b-it:free",
 ]
 
-IMAGE_PATH = "C:\\PyProject\\nutriciolog_bot\\picture\\uploads\\Плов.jpg"
+IMAGE_PATH = "D://AI//projects//ai-telegram-nutrition-bot//picture//uploads//olivier.jpg"
 
 
-def image_to_data_url(path: str) -> str:
-    mime_type, _ = mimetypes.guess_type(path)
-    if mime_type is None:
-        mime_type = "image/jpeg"
 
-    with open(path, "rb") as file:
-        encoded = base64.b64encode(file.read()).decode("utf-8")
-
-    return f"data:{mime_type};base64,{encoded}"
 
 def send_openrouter_request(model: str, image_data_url: str) -> requests.Response:
     payload = {
@@ -101,7 +93,6 @@ def call_openrouter_vision(image_path: str) -> str | None:
             continue
 
         content = data["choices"][0]["message"]["content"]
-        print(content)
         return content
 
     return None
@@ -109,4 +100,6 @@ def call_openrouter_vision(image_path: str) -> str | None:
 if __name__ == "__main__":
 
     ai_text = call_openrouter_vision(IMAGE_PATH)
+    if ai_text is None:
+        ai_text = call_local_vision(IMAGE_PATH)
     print(ai_text)

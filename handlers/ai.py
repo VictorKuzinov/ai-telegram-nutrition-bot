@@ -7,8 +7,13 @@ from aiogram.types import Message, CallbackQuery
 
 from ai.gigachat import (
     get_access_token,
-    call_gigachat_vision,
     call_gigachat,
+)
+from ai.local_model_vl import call_local_vision
+from ai.openrouter import call_openrouter_vision
+from config_ai import (
+    generate_user_prompt_recipe,
+    generate_user_prompt_menu
 )
 from db.repositories import (
     create_food_log,
@@ -31,12 +36,18 @@ from nutrition.nutrition_cache import (
     cache_path,
     save_or_increment_cache,
 )
+from services.ingredient_lookup import get_ai_dish_estimate_with_retry, calculate_portion_from_ai_estimate, \
+    save_review_dish, clean_dish_name
 from services.message_ai_parser import (
     clean_recipe_output,
     parse_ingredients_recipe,
     parse_ingredients_menu
 )
-from states import PhotoForm, RecipeForm, MenuForm
+from states import (
+    PhotoForm,
+    RecipeForm,
+    MenuForm
+)
 
 router = Router()
 
@@ -92,17 +103,14 @@ async def process_food_photo_handler(
     print(image_path.exists())
     await message.answer("Фото получил, начинаю распознавание...")
 
-    access_token = get_access_token()
-
-    content = call_gigachat_vision(
-        str(image_path),
-        access_token,
-    )
+    content = call_openrouter_vision( str(image_path))
 
     if not content:
-        await message.answer(
-            "⚠️ Не удалось распознать блюдо. Попробуйте другое фото."
-        )
+        content = call_local_vision(str(image_path))
+        if not content:
+            await message.answer(
+                "⚠️ Не удалось распознать блюдо. Попробуйте другое фото."
+            )
         await state.clear()
         return
     await message.answer(f"Распознано блюдо: {content}")
@@ -235,17 +243,25 @@ async def weight_handler(
 
     total, not_found = calculate_nutrition(parsed_ingredients)
     if not_found:
-        save_or_increment_cache(
-            cache_path,
-            not_found,
+        dish_name = clean_dish_name(food_title)
+
+        estimate = get_ai_dish_estimate_with_retry(
+            dish=dish_name,
+            max_attempts=3,
         )
-        await message.answer(
-            "⚠️ Блюдо пока отсутствует в базе ингредиентов.\n"
-            "Оно добавлено в очередь на обработку."
-        )
-        await state.clear()
-        return
-    else:
+
+        if not estimate:
+            save_or_increment_cache(cache_path, not_found)
+
+            await message.answer(
+                "⚠️ Блюдо пока отсутствует в базе ингредиентов.\n"
+                "Оно добавлено в очередь на обработку."
+            )
+            await state.clear()
+            return
+
+        portion = calculate_portion_from_ai_estimate(estimate, weight)
+
         profile = get_user_profile(message.from_user.id)
 
         if profile is None:
@@ -255,24 +271,53 @@ async def weight_handler(
 
         food_log_data = {
             "user_id": profile.id,
-            "food_name": food_title,
-            "weight": weight,
-            "kcal": total["kcal"],
-            "protein": total["protein"],
-            "fat": total["fat"],
-            "carbs": total["carbs"],
-            "source": "photo",
+            "food_name": portion["name_ru"],
+            "weight": portion["weight_g"],
+            "kcal": portion["kcal"],
+            "protein": portion["protein"],
+            "fat": portion["fat"],
+            "carbs": portion["carbs"],
+            "source": "ai_estimate",
         }
+
+        dish_per_100g = {
+            "name_ru": estimate.name_ru,
+            "kcal_per_100g": estimate.nutrition_per_100g.kcal,
+            "protein_per_100g": estimate.nutrition_per_100g.protein,
+            "fat_per_100g": estimate.nutrition_per_100g.fat,
+            "carbs_per_100g": estimate.nutrition_per_100g.carbs,
+            "source": "ai_estimate",
+            "needs_review": True,
+            "status": "pending",
+        }
+
+        save_review_dish(dish_per_100g)
+
+        total_for_footer = {
+            "weight": portion["weight_g"],
+
+            "kcal": portion["kcal"],
+            "protein": portion["protein"],
+            "fat": portion["fat"],
+            "carbs": portion["carbs"],
+
+            "kcal_100g": estimate.nutrition_per_100g.kcal,
+            "protein_100g": estimate.nutrition_per_100g.protein,
+            "fat_100g": estimate.nutrition_per_100g.fat,
+            "carbs_100g": estimate.nutrition_per_100g.carbs,
+        }
+
         await state.update_data(
             food_log_data=food_log_data,
-            calculated_total=total,
+            calculated_total=total_for_footer,
         )
+
         await state.set_state(PhotoForm.confirm_save)
 
         await message.answer(
-            f"🍽 {food_title}\n"
-            f"⚖️ Вес: {weight} г\n"
-            + footer(total, "recipe")
+            f"🍽 {portion['name_ru']}\n"
+            f"⚠️ КБЖУ рассчитано ИИ приблизительно.\n\n"
+            + footer(total_for_footer,"recipe")
         )
 
         await message.answer(
@@ -280,33 +325,7 @@ async def weight_handler(
             reply_markup=confirm_save_keyboard,
         )
 
-@router.callback_query(PhotoForm.confirm_save)
-async def confirm_save_handler(
-        callback: CallbackQuery,
-        state: FSMContext,
-) -> None:
-    data = await state.get_data()
-
-    if callback.data == "save_food_yes":
-        food_log_data = data.get("food_log_data")
-
-        if food_log_data:
-            create_food_log(food_log_data)
-            await callback.message.answer(
-                f"✅ Блюдо сохранено в Ваш дневник:\n\n"
-                f"🍽 {food_log_data['food_name']}\n"
-                f"⚖️ Вес: {food_log_data['weight']} г"
-            )
-            total = data.get("calculated_total")
-            await callback.message.answer(
-                 footer(total, "recipe")
-            )
-
-    elif callback.data == "save_food_no":
-        await callback.message.answer("👌 Не сохраняю.")
-
-    await state.clear()
-    await callback.answer()
+        return
 
 @router.callback_query(PhotoForm.confirm_save)
 async def confirm_save_handler(
@@ -426,54 +445,6 @@ async def kcal_handler(
     await state.update_data(kcal=message.text)
     await state.set_state(RecipeForm.waiting_wishes)
     await message.answer("Дополнительные пожелания?")
-
-def generate_user_prompt_recipe(data:dict) -> str:
-    user_prompt = f"""
-        Ты нутрициолог и повар.
-        
-        Составь рецепт блюда.
-        
-        Основной запрос:
-        {data["recipe"]}
-        
-        Количество человек:
-        {data["persons"]}
-        
-        Ограничение по калориям:
-        {data["kcal"]}
-
-        Дополнительные пожелания:
-        {data["wishes"]}
-        
-        Требования:
-        - краткий формат;
-        - список ингредиентов;
-        - пошаговое приготовление;
-        - примерная калорийность;
-        - б`ез длинных вступлений.
-    """
-    return user_prompt
-
-
-def generate_user_prompt_menu(data: dict, daily_kcal: float) -> str:
-    user_prompt = f"""
-        Ты нутрициолог и повар.
-
-        Составь меню на день
-        примерно на {daily_kcal}
-
-        Количество приемов пищи:
-        {data["meal_count"]}
-
-        Дополнительные пожелания:
-        {data["wishes"]}
-
-        Требования:
-        Если приёмов пищи больше трёх,
-        дополнительные называй "Перекус".
-    """
-    return user_prompt
-
 
 @router.message(RecipeForm.waiting_wishes)
 async def wishes_handler(
@@ -599,7 +570,13 @@ async def wishes_handler(
         await message.answer("⚠️ Не удалось получить меню от ИИ.")
         await state.clear()
         return
-    answer += str(ai_text).strip()
+    text = ai_text.strip()
+
+    text = text.replace("|", "")
+    text = text.replace("—", "-")
+    text = text.replace("–", "-")
+
+    answer += str(text).strip()
     parsed_menu = parse_ingredients_menu(ai_text)
     if not parsed_menu:
         await message.answer(

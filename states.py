@@ -34,3 +34,5 @@ class DiaryForm(StatesGroup):
     waiting_weight = State()
     waiting_delete_number = State()
     waiting_edit_number = State()
+    waiting_edit_name = State()
+    waiting_edit_weight = State()

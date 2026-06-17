@@ -5,7 +5,11 @@ from aiogram.types import Message, CallbackQuery
 
 from db.repositories import get_user_profile, update_user_profile
 from handlers.calc import start_calc_flow
-from keyboards import profile_menu_keyboard, target_keyboard, main_menu_keyboard
+from keyboards import (
+    profile_menu_keyboard,
+    target_keyboard,
+    main_menu_keyboard
+)
 from nutrition.nutrition_calc import (
     ACTIVITY_LEVELS,
     TARGETS,

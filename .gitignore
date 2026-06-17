@@ -9,3 +9,4 @@ token.json
 picture/uploads
 .pytest_cache
 data/missing_ingredients.json
+data/review_dishes.json
