@@ -5,8 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from db.database import SessionLocal
 from db.models import UserProfile, FoodLog
-from services.review_dishes import normalize_food_log_name
-
+from services.food_name_utils import normalize_food_log_name
 
 def create_user_profile(data: dict) -> UserProfile:
     """
