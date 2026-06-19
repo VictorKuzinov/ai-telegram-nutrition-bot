@@ -249,7 +249,6 @@ def send_gigachat_request(
     }
 
     response = send_url_request(url=URL_AI, token=token, payload=payload)
-    print("Делаем запрос к model=", model)
 
     return response
 
@@ -275,8 +274,8 @@ def call_gigachat_vision(image_path: str, token: str) -> str | None:
 
         response = send_url_request(url=URL_AI, token=token, payload=payload)
         logger.info("Делаем запрос к model=%s", model)
-        print(f"Модель: {model} - {response.status_code}")
-        print(response.text)
+        # print(f"Модель: {model} - {response.status_code}")
+        # print(response.text)
         if response.status_code == 200:
             break
 

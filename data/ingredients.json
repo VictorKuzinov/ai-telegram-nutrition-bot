@@ -2688,7 +2688,8 @@
     "name_ru": "грибной суп",
     "name_en": "mushroom soup",
     "aliases_ru": [
-      "суп грибной", "суп_с_грибами"
+      "суп грибной",
+      "суп_с_грибами"
     ],
     "aliases_en": [
       "mushroom soups"
@@ -2847,8 +2848,10 @@
     "name_ru": "баранина",
     "name_en": "lamb",
     "aliases_ru": [
-      "баранина", "баранина на кости",
-      "баранины", "свежая баранина"
+      "баранина",
+      "баранина на кости",
+      "баранины",
+      "свежая баранина"
     ],
     "aliases_en": [
       "lambs"
@@ -2870,7 +2873,8 @@
     "name_ru": "салат листовой",
     "name_en": "leaf lettuce",
     "aliases_ru": [
-      "салат листовой", "салаты листовые"
+      "салат листовой",
+      "салаты листовые"
     ],
     "aliases_en": [
       "leaf lettuces"
@@ -2914,7 +2918,8 @@
     "name_ru": "шампиньон",
     "name_en": "champignon mushroom",
     "aliases_ru": [
-      "шампиньон", "шампиньоны"
+      "шампиньон",
+      "шампиньоны"
     ],
     "aliases_en": [
       "champignon mushrooms"
@@ -2936,7 +2941,8 @@
     "name_ru": "рыбный соус",
     "name_en": "fish sauce",
     "aliases_ru": [
-      "рыбный соус", "рыбные соусы"
+      "рыбный соус",
+      "рыбные соусы"
     ],
     "aliases_en": [
       "fish sauces"
@@ -2958,7 +2964,8 @@
     "name_ru": "сок лайма",
     "name_en": "lime juice",
     "aliases_ru": [
-      "сок лайма", "соки лайма"
+      "сок лайма",
+      "соки лайма"
     ],
     "aliases_en": [
       "lime juices"
@@ -2996,5 +3003,56 @@
     ],
     "unit": "g",
     "source": "local"
+  },
+  {
+    "id": "fish_soup",
+    "name_ru": "Уха",
+    "name_en": "fish soup",
+    "aliases_ru": [
+      "уха",
+      "рыбный суп",
+      "суп рыбный",
+      "суп с рыбой",
+      "суп из рыбы"
+    ],
+    "aliases_en": [
+      "fish soup",
+      "fish soups",
+      "fish chowder",
+      "fish broth"
+    ],
+    "kcal_per_100g": 45.0,
+    "protein_per_100g": 4.0,
+    "fat_per_100g": 2.0,
+    "carbs_per_100g": 5.0,
+    "category": "dish",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "ai_review"
+  },
+  {
+    "id": "greek_salad",
+    "name_ru": "греческий салат",
+    "name_en": "greek salad",
+    "aliases_ru": [
+      "греческие салаты"
+    ],
+    "aliases_en": [
+      "greek salads"
+    ],
+    "kcal_per_100g": 90.0,
+    "protein_per_100g": 3.0,
+    "fat_per_100g": 6.5,
+    "carbs_per_100g": 4.0,
+    "category": "dish",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "ai_review"
   }
 ]

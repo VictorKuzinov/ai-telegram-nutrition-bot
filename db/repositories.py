@@ -5,6 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from db.database import SessionLocal
 from db.models import UserProfile, FoodLog
+from services.review_dishes import normalize_food_log_name
 
 
 def create_user_profile(data: dict) -> UserProfile:
@@ -73,6 +74,7 @@ def create_food_log(data: dict) -> FoodLog:
     session = SessionLocal()
 
     try:
+        data["food_name"] = normalize_food_log_name(data["food_name"])
         food = FoodLog(**data)
         session.add(food)
         session.commit()
@@ -150,6 +152,9 @@ def update_food_log(log_id: int, updates: dict) -> FoodLog | None:
         if food is None:
             return None
 
+        if "food_name" in updates and updates["food_name"]:
+            updates["food_name"] = normalize_food_log_name(updates["food_name"])
+
         for key, value in updates.items():
             setattr(food, key, value)
 
@@ -182,3 +187,68 @@ def delete_food_log(log_id: int) -> None:
 
     finally:
         session.close()
+
+def get_food_stats_by_days(user_id: int, days: int) -> dict:
+    start_period = datetime.now() - timedelta(days=days)
+
+    with SessionLocal() as session:
+        query = (
+            select(
+                func.strftime("%d.%m.%Y", FoodLog.created_at).label("date"),
+                func.sum(FoodLog.kcal).label("kcal"),
+                func.sum(FoodLog.protein).label("protein"),
+                func.sum(FoodLog.fat).label("fat"),
+                func.sum(FoodLog.carbs).label("carbs"),
+            )
+            .where(FoodLog.user_id == user_id)
+            .where(FoodLog.created_at >= start_period)
+            .group_by(func.date(FoodLog.created_at))
+            .order_by(func.date(FoodLog.created_at).desc())
+        )
+
+        rows = session.execute(query).all()
+
+    days_stats = []
+
+    summary = {
+        "kcal": 0,
+        "protein": 0,
+        "fat": 0,
+        "carbs": 0,
+    }
+
+    for row in rows:
+        day = {
+            "date": row.date,
+            "kcal": round(row.kcal or 0, 1),
+            "protein": round(row.protein or 0, 1),
+            "fat": round(row.fat or 0, 1),
+            "carbs": round(row.carbs or 0, 1),
+        }
+        print(day)
+        days_stats.append(day)
+
+        summary["kcal"] += day["kcal"]
+        summary["protein"] += day["protein"]
+        summary["fat"] += day["fat"]
+        summary["carbs"] += day["carbs"]
+
+    tracked_days = len(days_stats)
+
+    return {
+        "days": days,
+        "tracked_days": tracked_days,
+        "daily": days_stats,
+        "summary": {
+            "kcal": round(summary["kcal"], 1),
+            "protein": round(summary["protein"], 1),
+            "fat": round(summary["fat"], 1),
+            "carbs": round(summary["carbs"], 1),
+        },
+        "average": {
+            "kcal": round(summary["kcal"] / tracked_days, 1) if tracked_days else 0,
+            "protein": round(summary["protein"] / tracked_days, 1) if tracked_days else 0,
+            "fat": round(summary["fat"] / tracked_days, 1) if tracked_days else 0,
+            "carbs": round(summary["carbs"] / tracked_days, 1) if tracked_days else 0,
+        },
+    }

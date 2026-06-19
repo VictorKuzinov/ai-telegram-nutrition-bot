@@ -88,32 +88,37 @@ async def process_food_photo_handler(
     message: Message,
     state: FSMContext,
 ) -> None:
-
     photo = message.photo[-1]
 
-    image_path = (
-            UPLOAD_DIR /
-            f"{photo.file_id}.jpg"
-    )
+    image_path = UPLOAD_DIR / f"{photo.file_id}.jpg"
 
     await message.bot.download(
         photo,
         destination=image_path,
     )
-    print(image_path.exists())
+
     await message.answer("Фото получил, начинаю распознавание...")
 
-    content = call_openrouter_vision( str(image_path))
+    try:
+        content = call_openrouter_vision(str(image_path))
+
+        if not content:
+            content = call_local_vision(str(image_path))
+
+    finally:
+        try:
+            image_path.unlink(missing_ok=True)
+        except OSError as error:
+            print(f"Не удалось удалить файл {image_path}: {error}")
 
     if not content:
-        content = call_local_vision(str(image_path))
-        if not content:
-            await message.answer(
-                "⚠️ Не удалось распознать блюдо. Попробуйте другое фото."
-            )
+        await message.answer(
+            "⚠️ Не удалось распознать блюдо. Попробуйте другое фото."
+        )
         await state.clear()
         return
-    await message.answer(f"Распознано блюдо: {content}")
+
+    content = clean_dish_name(content)
     ingredients = parse_ingredients_recipe(content)
 
     if not ingredients:
@@ -122,6 +127,8 @@ async def process_food_photo_handler(
         )
         await state.set_state(PhotoForm.edit_ingredient_name)
         return
+
+    await message.answer(f"Распознано блюдо: {ingredients[0]['name']}")
 
     await state.update_data(
         ai_ingredients=ingredients,
@@ -132,6 +139,7 @@ async def process_food_photo_handler(
         f"• {ingredient['name']}"
         for ingredient in ingredients
     )
+
     await state.set_state(PhotoForm.confirm_ingredient)
 
     await message.answer(
@@ -140,6 +148,7 @@ async def process_food_photo_handler(
         f"Всё верно?",
         reply_markup=confirm_food_keyboard,
     )
+
 
 @router.callback_query(PhotoForm.confirm_ingredient)
 async def confirm_food_handler(
@@ -183,22 +192,20 @@ async def weight_handler(
     message: Message,
     state: FSMContext,
 ) -> None:
-
     text = message.text.strip()
 
     if not text.isdigit():
-        await message.answer(
-            "Введите вес числом в граммах."
-        )
+        await message.answer("Введите вес числом в граммах.")
         return
 
     weight = int(text)
 
     if weight <= 0:
-        await message.answer(
-            "Вес должен быть больше нуля."
-        )
+        await message.answer("Вес должен быть больше нуля.")
         return
+
+    current_state = await state.get_state()
+    print("STATE =", current_state)
 
     data = await state.get_data()
 
@@ -242,7 +249,15 @@ async def weight_handler(
         return
 
     total, not_found = calculate_nutrition(parsed_ingredients)
+
+    print("food_title:", food_title)
+    print("parsed_ingredients:", parsed_ingredients)
+    print("total:", total)
+    print("not_found:", not_found)
+
     if not_found:
+        print("AI FALLBACK:", food_title, "->", not_found)
+
         dish_name = clean_dish_name(food_title)
 
         estimate = get_ai_dish_estimate_with_retry(
@@ -295,12 +310,10 @@ async def weight_handler(
 
         total_for_footer = {
             "weight": portion["weight_g"],
-
             "kcal": portion["kcal"],
             "protein": portion["protein"],
             "fat": portion["fat"],
             "carbs": portion["carbs"],
-
             "kcal_100g": estimate.nutrition_per_100g.kcal,
             "protein_100g": estimate.nutrition_per_100g.protein,
             "fat_100g": estimate.nutrition_per_100g.fat,
@@ -317,7 +330,7 @@ async def weight_handler(
         await message.answer(
             f"🍽 {portion['name_ru']}\n"
             f"⚠️ КБЖУ рассчитано ИИ приблизительно.\n\n"
-            + footer(total_for_footer,"recipe")
+            + footer(total_for_footer, "recipe")
         )
 
         await message.answer(
@@ -326,6 +339,43 @@ async def weight_handler(
         )
 
         return
+
+    print("LOCAL DB HIT:", food_title)
+
+    profile = get_user_profile(message.from_user.id)
+
+    if profile is None:
+        await message.answer("Профиль пользователя не найден.")
+        await state.clear()
+        return
+
+    food_log_data = {
+        "user_id": profile.id,
+        "food_name": food_title,
+        "weight": weight,
+        "kcal": total["kcal"],
+        "protein": total["protein"],
+        "fat": total["fat"],
+        "carbs": total["carbs"],
+        "source": "photo",
+    }
+
+    await state.update_data(
+        food_log_data=food_log_data,
+        calculated_total=total,
+    )
+
+    await state.set_state(PhotoForm.confirm_save)
+
+    await message.answer(
+        f"🍽 {food_title}\n"
+        + footer(total, "recipe")
+    )
+
+    await message.answer(
+        "Добавить это блюдо в дневник?",
+        reply_markup=confirm_save_keyboard,
+    )
 
 @router.callback_query(PhotoForm.confirm_save)
 async def confirm_save_handler(

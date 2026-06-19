@@ -9,7 +9,7 @@ from db.repositories import (
     create_food_log,
     get_food_log_by_id,
     delete_food_log,
-    update_food_log,
+    update_food_log, get_food_stats_by_days,
 )
 from keyboards import (
     diary_menu_keyboard,
@@ -481,26 +481,76 @@ async def history_day_handler(message: Message, statistic_menu_keyboard=None) ->
     await message.answer("📊 Статистика питания",
                          reply_markup=statistics_menu_keyboard)
 
-@router.message(F.text == "📊 Статистика")
-async def statistic_week_handler(
-        message: Message,
+async def build_statistics_text(
+    message: Message,
+    period_days: int,
 ) -> None:
 
-    await message.answer("📊 Статистика за 7 дней",
-                         reply_markup=statistics_menu_keyboard)
+    profile = get_user_profile(message.from_user.id)
 
+    if profile is None:
+        await message.answer("Профиль не найден.")
+        return
+
+    target_title = TARGETS.get(profile.target)["title"]
+    results = calculate_profile_results(profile)
+    total_energy = results["total_energy"]
+
+    stats = get_food_stats_by_days(
+        user_id=profile.id,
+        days=period_days,
+    )
+
+    answer = f"📊 Статистика питания за {period_days} дней\n\n"
+    answer += f"🔥 Калорий съедено: {stats['summary']['kcal']} ккал\n"
+    answer += f"📅 Среднее в день: {stats['average']['kcal']} ккал\n"
+    answer += f"🥩 Белки: {stats['summary']['protein']} г\n"
+    answer += f"🧈 Жиры: {stats['summary']['fat']} г\n"
+    answer += f"🍞 Углеводы: {stats['summary']['carbs']} г\n\n"
+    answer += f"🎯 Цель: {target_title}\n"
+    answer += f"🍽 Норма: {total_energy} ккал/день\n\n"
+    answer += f"✅ Дней с записями в дневнике: {stats['tracked_days']} из {period_days}"
+
+    await message.answer(answer)
+
+    remainder_kcal = round(total_energy - stats["average"]["kcal"])
+
+    if remainder_kcal > 0:
+        result_text = (
+            f"🔥 Среднее за день: {stats['average']['kcal']} / "
+            f"{total_energy} ккал.\n"
+            f"✅ В среднем ниже нормы на {remainder_kcal} ккал."
+        )
+    elif remainder_kcal == 0:
+        result_text = "🙏 Средняя калорийность идеально совпала с дневной нормой."
+    else:
+        result_text = (
+            f"🔥 Среднее за день: {stats['average']['kcal']} / "
+            f"{total_energy} ккал.\n"
+            f"⚠️ В среднем выше нормы на {abs(remainder_kcal)} ккал."
+        )
+
+    await message.answer(
+        result_text,
+        reply_markup=statistics_menu_keyboard,
+    )
+
+@router.message(F.text == "📊 За 7 дней")
+async def statistic_week_handler(
+    message: Message,
+) -> None:
+    await build_statistics_text(message, 7)
 
 @router.message(F.text == "📈 За 30 дней")
 async def statistic_month_handler(
         message: Message,
 ) -> None:
-    await message.answer("📈Статистика За 30 дней",
-                         reply_markup=statistics_menu_keyboard)
+    await build_statistics_text(message, 30)
 
-# @router.message(F.text == "⬅️ К дневнику")
-# async def back_to_statistic_menu_handler(
-#     message: Message,
-# ) -> None:
-#
-#     await message.answer("Меню статистика.",
-#                          reply_markup=statistics_menu_keyboard)
+@router.message(F.text == "⬅️ К дневнику")
+async def back_to_statistic_menu_handler(
+    message: Message,
+) -> None:
+
+    await message.answer("Меню дневника.",
+                         reply_markup=diary_menu_keyboard)

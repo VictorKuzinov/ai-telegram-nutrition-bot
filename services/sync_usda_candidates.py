@@ -178,24 +178,40 @@ def transform_to_internal(record, data_usda) -> dict|None:
 
     return record_json
 
-def append_to_main_db(item: dict) -> None:
+def append_to_main_db(item: dict) -> bool:
     if item is None:
         print("Данных для добавления нет.")
-        return
+        return False
+
+    if not item.get("id"):
+        print("Нет id у записи.")
+        return False
+
+    path = DATA_DIR / "ingredients.json"
+
     try:
-        with open(DATA_DIR / "ingredients.json", 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             ingredient_data = json.load(f)
             print(f"Количество ингредиентов равно: {len(ingredient_data)}")
     except (FileNotFoundError, json.JSONDecodeError):
         ingredient_data = []
+
+    item_id = item["id"].lower().strip()
+
     for record in ingredient_data:
-        record_lower = record["id"].lower()
-        if record_lower == item["id"].lower():
-            return
-    print(f"Добавлен : {item['name_ru']} ингредиент")
+        record_id = record.get("id", "").lower().strip()
+
+        if record_id == item_id:
+            print(f"Уже есть в базе: {item['id']}")
+            return False
+
+    print(f"Добавлен ингредиент: {item.get('name_ru')}")
     ingredient_data.append(item)
-    with open(DATA_DIR / "ingredients.json", "w", encoding="utf-8") as f:
+
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(ingredient_data, f, ensure_ascii=False, indent=2)
+
+    return True
 
 def mark_as_migrated(item) -> None:
     if item is None:
