@@ -3054,5 +3054,29 @@
     ],
     "unit": "g",
     "source": "ai_review"
+  },
+  {
+    "id": "khachapuri",
+    "name_ru": "хачапури",
+    "name_en": "khachapuri",
+    "aliases_ru": [
+      "хачапури"
+    ],
+    "aliases_en": [
+      "khachapuri",
+      "georgian cheese bread",
+      "cheese bread"
+    ],
+    "kcal_per_100g": 250.0,
+    "protein_per_100g": 10.0,
+    "fat_per_100g": 15.0,
+    "carbs_per_100g": 25.0,
+    "category": "dish",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "ai_review"
   }
 ]
