@@ -26,6 +26,8 @@ from nutrition.nutrition_calc import (
     calculate_nutrition,
     footer,
 )
+from services.ingredient_lookup import clean_dish_name, get_ai_dish_estimate_with_retry, \
+    calculate_portion_from_ai_estimate, save_review_dish
 from services.message_builder import calculate_profile_results
 from states import DiaryForm
 
@@ -173,13 +175,24 @@ async def dish_weight_handler(
     )
 
     if not_found:
-        save_or_increment_cache(cache_path, not_found)
-        await message.answer(
-            "⚠️ Блюдо пока отсутствует в базе ингредиентов.\n"
-            "Оно добавлено в очередь на обработку."
+        print("AI FALLBACK:", data["name"], "->", not_found)
+
+        dish_name = clean_dish_name(data["name"])
+
+        estimate = get_ai_dish_estimate_with_retry(
+            dish=dish_name,
+            max_attempts=3,
         )
-        await state.clear()
-        return
+
+        if not estimate:
+            save_or_increment_cache(cache_path, not_found)
+
+            await message.answer(
+                "⚠️ Блюдо пока отсутствует в базе ингредиентов.\n"
+                "Оно добавлено в очередь на обработку."
+            )
+            await state.clear()
+            return
 
     profile = get_user_profile(message.from_user.id)
 
@@ -292,20 +305,20 @@ async def dish_handler_update(
         await message.answer("Записи с таким номером нет.")
         return
 
-    food = get_food_log_by_id(log_id)
+    food_old = get_food_log_by_id(log_id)
 
-    if food is None:
+    if food_old is None:
         await message.answer("Запись не найдена.")
         await state.clear()
         return
 
-    await state.update_data(log_id=log_id)
+    await state.update_data(log_id=log_id, food_old=food_old)
 
     await state.set_state(DiaryForm.waiting_edit_name)
     await message.answer(
         f"Текущее блюдо:\n"
-        f"🍽 {food.food_name}\n"
-        f"⚖️ {food.weight} г\n\n"
+        f"🍽 {food_old.food_name}\n"
+        f"⚖️ {food_old.weight} г\n\n"
         f"Введите новое название блюда."
     )
 
@@ -346,6 +359,7 @@ async def dish_edit_weight_handler(
     await state.update_data(weight=weight)
     data = await state.get_data()
 
+    old_name = data["food_old"].food_name
     total, not_found = calculate_nutrition(
         [
             {
@@ -355,15 +369,70 @@ async def dish_edit_weight_handler(
         ]
     )
 
-    if not_found:
-        save_or_increment_cache(cache_path, not_found)
+    if data['name'] == old_name:
+        profile = get_user_profile(message.from_user.id)
+
+        if profile is None:
+            await message.answer("Профиль пользователя не найден.")
+            await state.clear()
+            return
+
+        food_log_data = {
+            "user_id": profile.id,
+            "food_name": data["name"],
+            "weight": data["weight"],
+            "kcal": total["kcal"],
+            "protein": total["protein"],
+            "fat": total["fat"],
+            "carbs": total["carbs"],
+            "source": "manual",
+        }
+
+        log_id = data.get("log_id")
+
+        if not log_id:
+            await message.answer("Не удалось определить запись для изменения.")
+            await state.clear()
+            return
+
+        update_food_log(log_id, food_log_data)
+
         await message.answer(
-            "⚠️ Блюдо пока отсутствует в базе ингредиентов.\n"
-            "Оно добавлено в очередь на обработку."
+            f"✅ Запись обновлена:\n\n"
+            f"🍽 {food_log_data['food_name']}\n"
+            f"⚖️ Вес: {food_log_data['weight']} г"
         )
+
+        await message.answer(
+            footer(total, "recipe"),
+            reply_markup=diary_menu_keyboard,
+        )
+
         await state.clear()
         return
 
+    if not_found:
+        print("AI FALLBACK:", data["name"], "->", not_found)
+
+        dish_name = clean_dish_name(data["name"])
+
+        estimate = get_ai_dish_estimate_with_retry(
+            dish=dish_name,
+            max_attempts=3,
+        )
+
+        if not estimate:
+            save_or_increment_cache(cache_path, not_found)
+
+            await message.answer(
+                "⚠️ Блюдо пока отсутствует в базе ингредиентов.\n"
+                "Оно добавлено в очередь на обработку."
+            )
+            await state.clear()
+            return
+
+    portion = calculate_portion_from_ai_estimate(estimate, weight)
+    print(portion)
     profile = get_user_profile(message.from_user.id)
 
     if profile is None:
@@ -371,17 +440,26 @@ async def dish_edit_weight_handler(
         await state.clear()
         return
 
+    # food_log_data = {
+    #     "user_id": profile.id,
+    #     "food_name": data["name"],
+    #     "weight": data["weight"],
+    #     "kcal": total["kcal"],
+    #     "protein": total["protein"],
+    #     "fat": total["fat"],
+    #     "carbs": total["carbs"],
+    #     "source": "manual",
+    # }
     food_log_data = {
         "user_id": profile.id,
-        "food_name": data["name"],
-        "weight": data["weight"],
-        "kcal": total["kcal"],
-        "protein": total["protein"],
-        "fat": total["fat"],
-        "carbs": total["carbs"],
-        "source": "manual",
+        "food_name": portion["name_ru"],
+        "weight": portion["weight_g"],
+        "kcal": portion["kcal"],
+        "protein": portion["protein"],
+        "fat": portion["fat"],
+        "carbs": portion["carbs"],
+        "source": "ai_estimate",
     }
-
     log_id = data.get("log_id")
 
     if not log_id:
@@ -391,6 +469,31 @@ async def dish_edit_weight_handler(
 
     update_food_log(log_id, food_log_data)
 
+    dish_per_100g = {
+        "name_ru": estimate.name_ru,
+        "kcal_per_100g": estimate.nutrition_per_100g.kcal,
+        "protein_per_100g": estimate.nutrition_per_100g.protein,
+        "fat_per_100g": estimate.nutrition_per_100g.fat,
+        "carbs_per_100g": estimate.nutrition_per_100g.carbs,
+        "source": "ai_estimate",
+        "needs_review": True,
+        "status": "pending",
+    }
+
+    save_review_dish(dish_per_100g)
+
+    total_for_footer = {
+        "weight": portion["weight_g"],
+        "kcal": portion["kcal"],
+        "protein": portion["protein"],
+        "fat": portion["fat"],
+        "carbs": portion["carbs"],
+        "kcal_100g": estimate.nutrition_per_100g.kcal,
+        "protein_100g": estimate.nutrition_per_100g.protein,
+        "fat_100g": estimate.nutrition_per_100g.fat,
+        "carbs_100g": estimate.nutrition_per_100g.carbs,
+    }
+
     await message.answer(
         f"✅ Запись обновлена:\n\n"
         f"🍽 {food_log_data['food_name']}\n"
@@ -398,7 +501,8 @@ async def dish_edit_weight_handler(
     )
 
     await message.answer(
-        footer(total, "recipe"),
+        f"⚠️ КБЖУ рассчитано ИИ приблизительно.\n\n"
+        + footer(total_for_footer, "recipe"),
         reply_markup=diary_menu_keyboard,
     )
 

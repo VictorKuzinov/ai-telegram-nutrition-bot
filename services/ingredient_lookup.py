@@ -4,7 +4,7 @@ from datetime import datetime
 from rapidfuzz import process
 from pydantic import BaseModel, Field, ValidationError
 
-from ai.gigachat import get_access_token, call_gigachat
+from ai.gigachat import get_access_token, call_gigachat, call_chat_with_fallback
 from db.repositories import create_food_log
 from nutrition.nutrition_cache import DATA_DIR
 
@@ -157,12 +157,10 @@ def calculate_portion_from_ai_estimate(
 
 
 def get_ai_dish_estimate_with_retry(
-        dish: str,
-        max_attempts: int = 3,
+    dish: str,
+    max_attempts: int = 3,
 ) -> AiDishEstimate | None:
     last_error = ""
-
-    access_token = get_access_token()
 
     for attempt in range(1, max_attempts + 1):
         user_prompt = f"""
@@ -171,7 +169,7 @@ def get_ai_dish_estimate_with_retry(
 Верни только валидный JSON строго такого формата:
 {{
   "name_ru": "{dish}",
-  "total_weight_g": 0,
+  "total_weight_g": 100,
   "nutrition_per_100g": {{
     "kcal": 0,
     "protein": 0,
@@ -182,8 +180,8 @@ def get_ai_dish_estimate_with_retry(
 
 Обязательные условия:
 - все поля обязательны;
-- kcal, protein, fat, carbs должны быть числами больше или равны 0;
-- kcal должен быть больше 0;
+- kcal должен быть числом больше 0;
+- protein, fat, carbs должны быть числами больше или равны 0;
 - не добавляй Markdown;
 - не добавляй текст вне JSON.
 
@@ -191,11 +189,14 @@ def get_ai_dish_estimate_with_retry(
 {last_error}
 """
 
-        content = call_gigachat(
-            access_token,
+        content = call_chat_with_fallback(
             mode="dish",
             user_prompt=user_prompt,
         )
+
+        if not content:
+            last_error = "AI не вернул ответ"
+            continue
 
         try:
             data = json.loads(content)

@@ -7,6 +7,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from pathlib import Path
 
+from ai.local_model_vl import call_local_vision, call_local_chat
 from config_ai import (
     PROMPT_GIGACHAT,
     CONFIG,
@@ -14,6 +15,7 @@ from config_ai import (
     OAUTH_URL,
     generate_user_prompt_recipe,
     generate_user_prompt_menu,
+    generate_user_prompt_repeat,
 )
 from nutrition.nutrition_calc import (
     calculate_nutrition,
@@ -23,6 +25,8 @@ from services.message_ai_parser import (
     clean_recipe_output,
     parse_ingredients_menu,
 )
+from services.message_builder import scale_menu_weights, group_menu_by_meal, build_menu_text_from_parsed, \
+    normalize_piece_units, find_bad_items, replace_generic_products, merge_duplicate_items
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -32,6 +36,7 @@ _cached_token: Optional[str] = None
 load_dotenv()
 
 auth_data = os.getenv("GIGACHAT_AUTH_KEY")
+
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -274,8 +279,7 @@ def call_gigachat_vision(image_path: str, token: str) -> str | None:
 
         response = send_url_request(url=URL_AI, token=token, payload=payload)
         logger.info("Делаем запрос к model=%s", model)
-        # print(f"Модель: {model} - {response.status_code}")
-        # print(response.text)
+
         if response.status_code == 200:
             break
 
@@ -292,9 +296,14 @@ def call_gigachat_vision(image_path: str, token: str) -> str | None:
     return result["choices"][0]["message"].get("content")
 
 def call_gigachat(token: str, mode: str, user_prompt: str) -> str | None:
+    if os.getenv("FORCE_GIGACHAT_FAIL") == "1":
+        logger.warning("DEBUG: GigaChat forced fail")
+        return None
 
     cfg = CONFIG.get(mode, {})
     system_content = cfg.get("system_prompt", "")
+
+    last_response = None
 
     for model in models_ai_chat:
         response = send_gigachat_request(
@@ -303,26 +312,63 @@ def call_gigachat(token: str, mode: str, user_prompt: str) -> str | None:
             system_content,
             user_prompt,
         )
+
         if response is None:
             continue
-        if response.status_code == 200:
-            break
 
-    else:
-        result = response.json()
+        last_response = response
+
+        if response.status_code == 200:
+            result = response.json()
+            logger.debug("CHAT: %s", result)
+            return result["choices"][0]["message"].get("content")
+
+    if last_response is not None:
+        try:
+            result = last_response.json()
+        except ValueError:
+            result = last_response.text
+
         logger.error(
             "GigaChat error %s: %s",
-            response.status_code,
+            last_response.status_code,
             result,
         )
-        return None
+    else:
+        logger.error("GigaChat error: no response from all models")
 
-    result = response.json()
+    return None
 
-    logger.debug("CHAT: %s", result)
+def call_chat_with_fallback(
+    mode: str,
+    user_prompt: str,
+) -> str | None:
 
-    return result["choices"][0]["message"].get("content")
+    token = get_access_token()
 
+    if token:
+        result = call_gigachat(
+            token=token,
+            mode=mode,
+            user_prompt=user_prompt,
+        )
+
+        if result:
+            print("AI SOURCE: GIGACHAT")
+            return result
+
+    system_prompt = CONFIG.get(mode, {}).get(
+        "system_prompt",
+        "",
+    )
+
+    print(f"AI SOURCE: LOCAL ({mode})")
+
+    return call_local_chat(
+        mode=mode,
+        user_prompt=user_prompt,
+        system_prompt=system_prompt,
+    )
 
 if __name__ == "__main__":
 
@@ -341,7 +387,7 @@ if __name__ == "__main__":
     menu["meal_count"] = 3
     menu["wishes"] = "Нет"
 
-    mode = "recipe"
+    mode = "menu"
 
 
     if mode == "recipe":
@@ -353,45 +399,90 @@ if __name__ == "__main__":
     #     content = find_food_by_name(data["recipe"], aliases_index)
 
         user_message = generate_user_prompt_recipe(data=data)
-        content = call_gigachat(access_token, mode=mode, user_prompt=user_message)
-        print(content)
-        # answer = str(content).strip()
-        result = clean_recipe_output(content)
-        print(result)
+        content = call_chat_with_fallback(
+            mode=mode,
+            user_prompt=user_message,
+        )
+
+        if not content:
+            print("⚠️ Не удалось получить ответ от AI.")
+        else:
+            result = clean_recipe_output(content)
+            print(result)
     else:
         answer = ""
 
         user_message = generate_user_prompt_menu(menu, daily_kcal=kcal)
-        content = call_gigachat(access_token, mode=mode, user_prompt=user_message)
-        answer += str(content).strip()
-        result = content
-        parsed_menu = parse_ingredients_menu(result)
 
-        meals: dict[str, list[dict]] = {}
+        content = call_chat_with_fallback(
+            mode=mode,
+            user_prompt=user_message,
+        )
+        print(content.strip())
+        content = normalize_piece_units(content)
+        parsed_menu = parse_ingredients_menu(content)
+        print(parsed_menu)
+        parsed_menu = replace_generic_products(parsed_menu)
+        parsed_menu = merge_duplicate_items(parsed_menu)
+        print(parsed_menu)
+        bad_items = find_bad_items(parsed_menu)
+        if bad_items:
+            print("Обобщённые продукты:", bad_items)
+            print("Работаем над улучшением меню. Ждите...")
 
-        for item in parsed_menu:
-            meal = item["meal"]
 
-            if meal not in meals:
-                meals[meal] = []
+            user_message = generate_user_prompt_repeat(content=content, bad_words=bad_items)
+            print(user_message)
+            content = call_chat_with_fallback(
+                mode=mode,
+                user_prompt=user_message,
+            )
 
-            meals[meal].append(item)
+            if not content:
+                print("ИИ не вернул исправленное меню")
 
-        answer += "\n\n📊 <b>Расчёт КБЖУ:</b>\n"
+
+            print(content.strip())
+            parsed_menu = parse_ingredients_menu(content)
+
+        meals = group_menu_by_meal(parsed_menu)
+
+        day_total_kcal = 0
 
         for meal_name, ingredients in meals.items():
-            total, not_found = calculate_nutrition(ingredients)
+            total, _ = calculate_nutrition(ingredients)
+            day_total_kcal += total["kcal"]
 
-            answer += "=" * 20
-            answer += f"\nПриём пищи: {meal_name}"
-            answer += footer(total, "menu")
+        print(day_total_kcal)
 
-            if not_found:
-                answer += "\n⚠ Не учтены в расчёте:\n"
-                for item in not_found:
-                    answer += f"- {item}\n"
+        if day_total_kcal < 1993:
+            scaled_menu = scale_menu_weights(
+                parsed_menu=parsed_menu,
+                target_kcal=1993,
+                actual_kcal=day_total_kcal,
+            )
 
-        print(answer)
+            scaled_meals = group_menu_by_meal(scaled_menu)
+
+            new_total = 0
+
+            for meal_name, ingredients in scaled_meals.items():
+                total, not_found = calculate_nutrition(ingredients)
+                new_total += total["kcal"]
+
+            print(new_total)
+            print(build_menu_text_from_parsed(scaled_menu))
+        #
+        #     answer += "=" * 20
+        #     answer += f"\nПриём пищи: {meal_name}"
+        #     answer += footer(total, "menu")
+        #
+        #     if not_found:
+        #         answer += "\n⚠ Не учтены в расчёте:\n"
+        #         for item in not_found:
+        #             answer += f"- {item}\n"
+        #
+        # print(answer)
     # # Данные для запроса определения по фотографии
     # image_url = "https://i.ibb.co/whzjRQ6Z/image.jpg"  # плов
     # # image_url = "https://i.ibb.co/sJsXgjSh/download.jpg" ## борщ

@@ -3,7 +3,7 @@ import requests
 from config_ai import PROMPT_GIGACHAT
 from services.image_utils import image_to_data_url
 
-LOCAL_URL = "http://127.0.0.1:8000/v1/chat/completions"
+LOCAL_URL = "http://127.0.0.1:8080/v1/chat/completions"
 LOCAL_MODEL = "qwen2.5-vl-local"
 
 
@@ -72,3 +72,39 @@ def call_local_vision(image_path: str) -> str | None:
     print(content)
 
     return content
+
+def call_local_chat(
+    mode: str,
+    user_prompt: str,
+    system_prompt: str = "",
+) -> str | None:
+    payload = {
+        "model": "local-model",
+        "messages": [
+            {
+                "role": "system",
+                "content": system_prompt,
+            },
+            {
+                "role": "user",
+                "content": user_prompt,
+            },
+        ],
+        "temperature": 0.2,
+        "max_tokens": 500,
+    }
+
+    try:
+        response = requests.post(
+            LOCAL_URL,
+            json=payload,
+            timeout=120,
+        )
+        response.raise_for_status()
+    except requests.RequestException as error:
+        print(f"Local chat error: {error}")
+        return None
+
+    data = response.json()
+
+    return data["choices"][0]["message"].get("content")

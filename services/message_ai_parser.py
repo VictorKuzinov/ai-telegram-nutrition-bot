@@ -62,9 +62,6 @@ def parse_ingredient_line(text: str) -> tuple[str, float] | None:
     amount = float(match.group(2).replace(",", "."))
     unit = match.group(3).strip()
 
-    # if unit == "шт" and name == "яйцо":
-    #     amount *= 55
-
     if unit not in ("г", "гр", "мл"):
         return None
 
@@ -103,7 +100,7 @@ def parse_ingredients_menu(text: str) -> ParsedIngredients:
     Извлекает ингредиенты из текста дневного меню.
 
     В отличие от parse_ingredients_recipe(), сохраняет тип приёма пищи
-    в поле meal.
+    в поле meal и название блюда dish.
 
     Поддерживаемые секции берутся из choice_menu:
     завтрак, обед, ужин, перекус.
@@ -113,6 +110,7 @@ def parse_ingredients_menu(text: str) -> ParsedIngredients:
     """
     parsed: ParsedIngredients = []
     current_meal: str | None = None
+    dish_name: str | None = None
 
     for line in text.splitlines():
         lower_line = line.lower().strip()
@@ -122,7 +120,12 @@ def parse_ingredients_menu(text: str) -> ParsedIngredients:
 
             if meal_name in choice_menu:
                 current_meal = meal_name
+                dish_name = None
 
+            continue
+
+        if lower_line.startswith("блюдо:"):
+            dish_name = line.split(":", 1)[1].strip()
             continue
 
         if current_meal is None:
@@ -136,6 +139,7 @@ def parse_ingredients_menu(text: str) -> ParsedIngredients:
         parsed.append(
             {
                 "meal": current_meal,
+                "dish": dish_name,
                 "name": result[0],
                 "weight": result[1],
             }

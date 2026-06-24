@@ -3078,5 +3078,74 @@
     ],
     "unit": "g",
     "source": "ai_review"
+  },
+  {
+    "id": "pizza_margherita",
+    "name_ru": "пицца маргарита",
+    "name_en": "pizza margherita",
+    "aliases_ru": [
+      "пицца маргарита",
+      "маргарита",
+      "пиццы маргариты"
+    ],
+    "aliases_en": [
+      "pizza margherita",
+      "margherita pizza"
+    ],
+    "kcal_per_100g": 250.0,
+    "protein_per_100g": 10.0,
+    "fat_per_100g": 15.0,
+    "carbs_per_100g": 30.0,
+    "category": "dish",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "ai_review"
+  },
+  {
+    "id": "flour",
+    "name_ru": "мука",
+    "name_en": "flour",
+    "aliases_ru": [
+      "мука"
+    ],
+    "aliases_en": [
+      "flour"
+    ],
+    "kcal_per_100g": 357,
+    "protein_per_100g": 0.3,
+    "fat_per_100g": 0.1,
+    "carbs_per_100g": 88.2,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "vinegar",
+    "name_ru": "уксус",
+    "name_en": "vinegar",
+    "aliases_ru": [
+      "уксус"
+    ],
+    "aliases_en": [
+      "vinegar"
+    ],
+    "kcal_per_100g": 21,
+    "protein_per_100g": 0,
+    "fat_per_100g": 0,
+    "carbs_per_100g": 0.93,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
   }
 ]

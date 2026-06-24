@@ -6,14 +6,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
 from ai.gigachat import (
-    get_access_token,
-    call_gigachat,
+   call_chat_with_fallback,
 )
 from ai.local_model_vl import call_local_vision
 from ai.openrouter import call_openrouter_vision
 from config_ai import (
     generate_user_prompt_recipe,
-    generate_user_prompt_menu
+    generate_user_prompt_menu, generate_user_prompt_repeat
 )
 from db.repositories import (
     create_food_log,
@@ -43,6 +42,8 @@ from services.message_ai_parser import (
     parse_ingredients_recipe,
     parse_ingredients_menu
 )
+from services.message_builder import normalize_piece_units, replace_generic_products, merge_duplicate_items, \
+    find_bad_items, group_menu_by_meal, build_menu_text_from_parsed, scale_menu_weights
 from states import (
     PhotoForm,
     RecipeForm,
@@ -204,9 +205,6 @@ async def weight_handler(
         await message.answer("Вес должен быть больше нуля.")
         return
 
-    current_state = await state.get_state()
-    print("STATE =", current_state)
-
     data = await state.get_data()
 
     ingredients = data.get("ai_ingredients", [])
@@ -250,13 +248,7 @@ async def weight_handler(
 
     total, not_found = calculate_nutrition(parsed_ingredients)
 
-    print("food_title:", food_title)
-    print("parsed_ingredients:", parsed_ingredients)
-    print("total:", total)
-    print("not_found:", not_found)
-
     if not_found:
-        print("AI FALLBACK:", food_title, "->", not_found)
 
         dish_name = clean_dish_name(food_title)
 
@@ -339,8 +331,6 @@ async def weight_handler(
         )
 
         return
-
-    print("LOCAL DB HIT:", food_title)
 
     profile = get_user_profile(message.from_user.id)
 
@@ -498,18 +488,27 @@ async def kcal_handler(
 
 @router.message(RecipeForm.waiting_wishes)
 async def wishes_handler(
-        message: Message,
-        state: FSMContext,
+    message: Message,
+    state: FSMContext,
 ) -> None:
     await state.update_data(wishes=message.text)
     await message.answer("Формирую рецепт...")
+
     data = await state.get_data()
-
-    access_token = get_access_token()
     user_prompt = generate_user_prompt_recipe(data)
-    ai_text = call_gigachat(access_token, mode='recipe', user_prompt=user_prompt)
 
-    result = clean_recipe_output(ai_text)
+    content = call_chat_with_fallback(
+        mode="recipe",
+        user_prompt=user_prompt,
+    )
+
+    if not content:
+        await message.answer("⚠️ Не удалось получить ответ от AI.")
+        await state.clear()
+        return
+
+    result = clean_recipe_output(content)
+
     parsed = parse_ingredients_recipe(result)
 
     if not parsed:
@@ -569,28 +568,33 @@ async def wishes_meal_count(
 
     meal_count = int(message.text)
 
-    if meal_count < 3 or meal_count > 6:
-        await message.answer("Введите число от 3 до 6")
-        return
+    if meal_count != 3:
+        await message.answer(
+            "Пока поддерживается только меню на 3 приёма пищи. "
+            "Будет использовано значение: 3."
+        )
 
-    await state.update_data(meal_count=meal_count)
+    await state.update_data(meal_count=3)
     await state.set_state(MenuForm.waiting_wishes)
     await message.answer("Введите пожелания к меню (или напишите 'нет')")
 
 @router.message(MenuForm.waiting_wishes)
 async def wishes_handler(
-        message: Message,
-        state: FSMContext,
+    message: Message,
+    state: FSMContext,
 ) -> None:
     await state.update_data(wishes=message.text)
     await message.answer("Формирую меню...")
-    answer = ""
+
     data = await state.get_data()
+
     profile = get_user_profile(message.from_user.id)
+
     if profile is None:
         await message.answer("Профиль пользователя не найден.")
         await state.clear()
         return
+
     bmr = calc_bmr(
         gender=profile.gender,
         weight=profile.weight,
@@ -609,40 +613,88 @@ async def wishes_handler(
         base_calories,
         target=profile.target,
     )
-    access_token = get_access_token()
-    user_prompt = generate_user_prompt_menu(data, total_energy)
-    ai_text = call_gigachat(
-        access_token,
-        mode='menu',
-        user_prompt=user_prompt
+
+    user_prompt = generate_user_prompt_menu(
+        data,
+        total_energy,
     )
-    if not ai_text:
+
+    content = call_chat_with_fallback(
+        mode="menu",
+        user_prompt=user_prompt,
+    )
+
+    if not content:
         await message.answer("⚠️ Не удалось получить меню от ИИ.")
         await state.clear()
         return
-    text = ai_text.strip()
 
-    text = text.replace("|", "")
-    text = text.replace("—", "-")
-    text = text.replace("–", "-")
+    content = normalize_piece_units(content)
 
-    answer += str(text).strip()
-    parsed_menu = parse_ingredients_menu(ai_text)
+    parsed_menu = parse_ingredients_menu(content)
+
     if not parsed_menu:
         await message.answer(
             "⚠️ Не удалось рассчитать КБЖУ: ингредиенты не распознаны."
         )
         await state.clear()
         return
-    meals: dict[str, list[dict]] = {}
 
-    for item in parsed_menu:
-        meal = item["meal"]
+    parsed_menu = replace_generic_products(parsed_menu)
+    parsed_menu = merge_duplicate_items(parsed_menu)
 
-        if meal not in meals:
-            meals[meal] = []
+    bad_items = find_bad_items(parsed_menu)
 
-        meals[meal].append(item)
+    if bad_items:
+        await message.answer("Работаем над улучшением меню. Ждите...")
+
+        user_prompt = generate_user_prompt_repeat(
+            content=content,
+            bad_words=bad_items,
+        )
+
+        content = call_chat_with_fallback(
+            mode="menu",
+            user_prompt=user_prompt,
+        )
+
+        if not content:
+            await message.answer("⚠️ ИИ не вернул исправленное меню.")
+            await state.clear()
+            return
+
+        content = normalize_piece_units(content)
+
+        parsed_menu = parse_ingredients_menu(content)
+
+        if not parsed_menu:
+            await message.answer("⚠️ Не удалось разобрать исправленное меню.")
+            await state.clear()
+            return
+
+        parsed_menu = replace_generic_products(parsed_menu)
+        parsed_menu = merge_duplicate_items(parsed_menu)
+
+    meals = group_menu_by_meal(parsed_menu)
+
+    day_total_kcal = 0
+
+    for meal_name, ingredients in meals.items():
+        total, _ = calculate_nutrition(ingredients)
+        day_total_kcal += total["kcal"]
+
+    if day_total_kcal < total_energy:
+        parsed_menu = scale_menu_weights(
+            parsed_menu=parsed_menu,
+            target_kcal=total_energy,
+            actual_kcal=day_total_kcal,
+        )
+
+        meals = group_menu_by_meal(parsed_menu)
+
+    answer = build_menu_text_from_parsed(parsed_menu)
+
+    all_not_found = []
 
     for meal_name, ingredients in meals.items():
         total, not_found = calculate_nutrition(ingredients)
@@ -651,11 +703,15 @@ async def wishes_handler(
         answer += f"\nПриём пищи: {meal_name}\n"
         answer += footer(total, "menu")
 
-        if not_found:
-            answer += "\n⚠ Не учтены в расчёте:\n"
-            for item in not_found:
-                answer += f"- {item}\n"
-            save_or_increment_cache(cache_path, not_found)
+        all_not_found.extend(not_found)
+
+    if all_not_found:
+        answer += "\n⚠ Не учтены в расчёте:\n"
+
+        for item in sorted(set(all_not_found)):
+            answer += f"- {item}\n"
+
+        save_or_increment_cache(cache_path, all_not_found)
 
     await message.answer(answer)
     await state.clear()
