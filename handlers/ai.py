@@ -6,13 +6,16 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
 from ai.gigachat import (
-   call_chat_with_fallback,
+    call_chat_with_fallback,
+    process_recipe_ai_text,
+    repair_recipe,
 )
 from ai.local_model_vl import call_local_vision
 from ai.openrouter import call_openrouter_vision
 from config_ai import (
     generate_user_prompt_recipe,
-    generate_user_prompt_menu, generate_user_prompt_repeat
+    generate_user_prompt_menu,
+    generate_user_prompt_repeat
 )
 from db.repositories import (
     create_food_log,
@@ -35,25 +38,54 @@ from nutrition.nutrition_cache import (
     cache_path,
     save_or_increment_cache,
 )
-from services.ingredient_lookup import get_ai_dish_estimate_with_retry, calculate_portion_from_ai_estimate, \
-    save_review_dish, clean_dish_name
+from services.ingredient_lookup import (
+    get_ai_dish_estimate_with_retry,
+    calculate_portion_from_ai_estimate,
+    save_review_dish,
+    clean_dish_name,
+)
 from services.message_ai_parser import (
-    clean_recipe_output,
     parse_ingredients_recipe,
     parse_ingredients_menu
 )
-from services.message_builder import normalize_piece_units, replace_generic_products, merge_duplicate_items, \
-    find_bad_items, group_menu_by_meal, build_menu_text_from_parsed, scale_menu_weights
+from services.message_builder import (
+    normalize_piece_units,
+    replace_generic_products,
+    merge_duplicate_items,
+    find_bad_items,
+    group_menu_by_meal,
+    build_menu_text_from_parsed,
+    scale_menu_weights,
+    parse_recipe_blocks,
+)
+from services.recipe_utils import extract_recipe_name
 from states import (
     PhotoForm,
     RecipeForm,
     MenuForm
 )
+from validators.recipe_validators import RecipeValidationResult
 
 router = Router()
 
 UPLOAD_DIR = Path("picture/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+def validate_recipe_title(
+    requested_title: str,
+    recipe_text: str,
+    result: RecipeValidationResult,
+) -> None:
+    actual_title = extract_recipe_name(recipe_text)
+
+    if not actual_title:
+        result.add_error("Не найдено название рецепта.")
+        return
+
+    if requested_title.lower().strip() not in actual_title.lower().strip():
+        result.add_error(
+            f"Название рецепта не соответствует запросу: ожидалось '{requested_title}', получено '{actual_title}'."
+        )
 
 @router.message(F.text == "🤖 AI функции")
 async def ai_menu_handler(
@@ -69,6 +101,7 @@ async def photo_handler(
     message: Message,
     state: FSMContext,
 ) -> None:
+    await state.clear()
     await photo_from_menu_handler(message, state)
 
 
@@ -77,6 +110,7 @@ async def photo_from_menu_handler(
     message: Message,
     state: FSMContext,
 ) -> None:
+    await state.clear()
     await state.set_state(PhotoForm.waiting_photo)
     await message.answer(
         "Отправьте фото блюда. \n"
@@ -90,6 +124,9 @@ async def process_food_photo_handler(
     state: FSMContext,
 ) -> None:
     photo = message.photo[-1]
+
+    if not photo:
+        return
 
     image_path = UPLOAD_DIR / f"{photo.file_id}.jpg"
 
@@ -442,6 +479,7 @@ async def recipe_handler(
         message: Message,
         state: FSMContext,
 ) -> None:
+    await state.clear()
     await start_recipe_flow(message, state)
 
 @router.message(F.text == "🍲 Создать рецепт")
@@ -449,6 +487,7 @@ async def recipe_from_menu_handler(
         message: Message,
         state: FSMContext,
 ) -> None:
+    await state.clear()
     await message.answer("🍳 Получить рецепт:")
     await start_recipe_flow(message, state)
 
@@ -473,7 +512,18 @@ async def person_handler(
         message: Message,
         state: FSMContext,
 ) -> None:
-    await state.update_data(persons=message.text)
+    text = message.text.strip()
+    if not text.isdigit():
+        await message.answer("Введите количество человек числом, например: 4")
+        return
+
+    persons = int(text)
+
+    if persons < 1 or persons > 20:
+        await message.answer("Количество человек должно быть от 1 до 20.")
+        return
+
+    await state.update_data(persons=persons)
     await state.set_state(RecipeForm.waiting_kcal)
     await message.answer("Ограничение по калориям?")
 
@@ -482,7 +532,19 @@ async def kcal_handler(
         message: Message,
         state: FSMContext,
 ) -> None:
-    await state.update_data(kcal=message.text)
+    text = message.text.strip()
+
+    if not text.isdigit():
+        await message.answer("Введите калории числом, например: 1800")
+        return
+
+    kcal = int(text)
+
+    if kcal < 100 or kcal > 10000:
+        await message.answer("Калории должны быть от 100 до 10000.")
+        return
+
+    await state.update_data(kcal=kcal)
     await state.set_state(RecipeForm.waiting_wishes)
     await message.answer("Дополнительные пожелания?")
 
@@ -496,23 +558,40 @@ async def wishes_handler(
 
     data = await state.get_data()
     user_prompt = generate_user_prompt_recipe(data)
-
     content = call_chat_with_fallback(
         mode="recipe",
         user_prompt=user_prompt,
     )
+    print(content)
 
     if not content:
         await message.answer("⚠️ Не удалось получить ответ от AI.")
         await state.clear()
         return
+    recipe_text, validation = process_recipe_ai_text(content, mode="recipe")
+    validate_recipe_title(
+        data["recipe"],
+        recipe_text,
+        validation,
+    )
+    if validation.is_valid:
+        answer = recipe_text.strip()
+        print(answer)
+    else:
+        title = data.get("recipe", "рецепт")
+        answer = repair_recipe("recipe", title, recipe_text, validation)
+        print(answer)
+        if answer is None:
+            await message.answer("😔 Не удалось подобрать корректный рецепт.")
+            await state.clear()
+            return
 
-    result = clean_recipe_output(content)
+        answer = answer.strip()
 
-    parsed = parse_ingredients_recipe(result)
+    parsed_recipe = parse_recipe_blocks(answer)
+    parsed = parsed_recipe["ingredients"]
 
     if not parsed:
-        await message.answer(result)
         await message.answer(
             "⚠️ Не удалось рассчитать КБЖУ: ингредиенты не распознаны."
         )
@@ -521,7 +600,6 @@ async def wishes_handler(
 
     total, not_found = calculate_nutrition(parsed)
 
-    answer = result.strip()
     answer += "\n" + footer(total, "recipe")
 
     if not_found:
@@ -540,6 +618,7 @@ async def menu_handler(
         message: Message,
         state: FSMContext,
 ) -> None:
+    await state.clear()
     await start_menu_flow(message, state)
 
 @router.message(F.text == "📋 Меню на день")
@@ -547,6 +626,7 @@ async def menu_from_menu_handler(
         message: Message,
         state: FSMContext,
 ) -> None:
+    await state.clear()
     await message.answer("🍳 Получить меню на день:")
     await start_menu_flow(message, state)
 
@@ -640,7 +720,7 @@ async def wishes_handler(
         await state.clear()
         return
 
-    parsed_menu = replace_generic_products(parsed_menu)
+    parsed_menu = replace_generic_products(parsed_menu, "menu")
     parsed_menu = merge_duplicate_items(parsed_menu)
 
     bad_items = find_bad_items(parsed_menu)
@@ -672,7 +752,7 @@ async def wishes_handler(
             await state.clear()
             return
 
-        parsed_menu = replace_generic_products(parsed_menu)
+        parsed_menu = replace_generic_products(parsed_menu, "menu")
         parsed_menu = merge_duplicate_items(parsed_menu)
 
     meals = group_menu_by_meal(parsed_menu)

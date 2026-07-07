@@ -9,7 +9,8 @@ from db.repositories import (
     create_food_log,
     get_food_log_by_id,
     delete_food_log,
-    update_food_log, get_food_stats_by_days,
+    update_food_log,
+    get_food_stats_by_days,
 )
 from keyboards import (
     diary_menu_keyboard,
@@ -26,8 +27,12 @@ from nutrition.nutrition_calc import (
     calculate_nutrition,
     footer,
 )
-from services.ingredient_lookup import clean_dish_name, get_ai_dish_estimate_with_retry, \
-    calculate_portion_from_ai_estimate, save_review_dish
+from services.ingredient_lookup import (
+    clean_dish_name,
+    get_ai_dish_estimate_with_retry,
+    calculate_portion_from_ai_estimate,
+    save_review_dish,
+)
 from services.message_builder import calculate_profile_results
 from states import DiaryForm
 

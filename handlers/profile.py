@@ -18,7 +18,7 @@ from nutrition.nutrition_calc import (
     calc_base_calories,
 )
 from states import ProfileForm
-from validators import validate_weight
+from validators.profile_validators import validate_weight
 
 router = Router()
 

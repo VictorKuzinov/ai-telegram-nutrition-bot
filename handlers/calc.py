@@ -21,7 +21,7 @@ from services.message_builder import (
     build_calc_result_message,
     calculate_profile_results,
 )
-from validators import (
+from validators.profile_validators import (
     validate_age,
     validate_height,
     validate_weight,

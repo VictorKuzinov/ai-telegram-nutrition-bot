@@ -28,18 +28,6 @@ def get_cache_candidates(path: Path, min_lookup_count: int) -> list:
             item["migrated"] == False:
             candidates.append(item)
     return candidates
-#
-# def prepare_for_main_db_old(records):
-#     for record in records:
-#         confirmation = ""
-#         while confirmation.lower() not in ("yes", "y", "да"):
-#             record["name_en"] = input(f"Введите английский перевод слова - {record['name_ru']} в единственном числе: ")
-#             record["aliases_en"] = input(f"Введите английский перевод слова - {record['name_ru']} во множественном числе: ")
-#             record["aliases_ru"] = input(f"Введите значение слова: - {record['name_ru']} во множественном числе: ")
-#             print(f"Вы ввели значение слова: {record['name_ru']} - во множественном числе: {record['aliases_ru']}"
-#                   f" и его перевод на английский во множественном числе: {record['aliases_en']}, английский превод в единственном числе: {record["name_en"]}", sep="\n")
-#             confirmation = input("Вы подтверждаете (Yes)?")
-#     return records
 
 def translate_to_en(name_ru: str) -> str:
     translated = (GoogleTranslator(source='auto', target='en').
@@ -179,6 +167,7 @@ def transform_to_internal(record, data_usda) -> dict|None:
     return record_json
 
 def append_to_main_db(item: dict) -> bool:
+
     if item is None:
         print("Данных для добавления нет.")
         return False

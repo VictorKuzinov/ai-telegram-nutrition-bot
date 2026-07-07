@@ -1,10 +1,7 @@
 import re
+from typing import TypedDict
 
 from config_ai import choice_menu
-
-ParsedIngredient = dict[str, str | float]
-ParsedIngredients = list[ParsedIngredient]
-
 
 FORBIDDEN_PATTERNS: list[str] = [
     r"\bккал\b",
@@ -14,9 +11,45 @@ FORBIDDEN_PATTERNS: list[str] = [
     r"\bбелк",
     r"\bжир",
     r"\bуглевод",
+    r"\bвес",
     r"\bэнергетическ",
     r"\bпищев(ая|ую)\s+ценност",
 ]
+
+STOP_MARKERS = [
+    "примерная калорийность",
+    "калорийность",
+    "ккал",
+    "бжу",
+    "кбжу",
+    "пищевая ценность",
+    "вес блюда",
+    "вес ингредиентов",
+    "важно:",
+    "время приготовления",
+    "время готовки",
+    "приготовленное блюдо",
+]
+
+
+class RecipeIngredient(TypedDict):
+    name: str
+    weight: float
+
+
+class MenuIngredient(TypedDict):
+    meal: str
+    dish: str
+    name: str
+    weight: float
+
+
+RecipeIngredients = list[RecipeIngredient]
+MenuIngredients = list[MenuIngredient]
+ParsedIngredient = RecipeIngredient
+ParsedIngredients = RecipeIngredients
+
+
 
 
 def parse_ingredient_line(text: str) -> tuple[str, float] | None:
@@ -28,6 +61,7 @@ def parse_ingredient_line(text: str) -> tuple[str, float] | None:
     - продукт - 100 гр
     - продукт — 100 мл
     - продукт — 2 шт
+    - продукт - 1 л
 
     Перед разбором нормализует строку:
     - убирает символы таблиц "|";
@@ -46,10 +80,11 @@ def parse_ingredient_line(text: str) -> tuple[str, float] | None:
     text = text.replace("шт.", "шт")
     text = text.replace("гр.", "гр")
     text = text.replace("г.", "г")
+    text = text.replace("л.", "л")
     text = text.replace("мл.", "мл")
 
     match = re.search(
-        r"(.+?)\s*-\s*(\d+(?:[.,]\d+)?)\s*(г|гр|мл|шт)",
+        r"(.+?)\s*-\s*(\d+(?:[.,]\d+)?)\s*(г|гр|мл|шт|л)",
         text,
     )
 
@@ -62,10 +97,16 @@ def parse_ingredient_line(text: str) -> tuple[str, float] | None:
     amount = float(match.group(2).replace(",", "."))
     unit = match.group(3).strip()
 
-    if unit not in ("г", "гр", "мл"):
+    if unit in ("г", "гр", "мл"):
+        weight = amount
+
+    elif unit == "л":
+        weight = amount * 1000
+
+    else:
         return None
 
-    return name, amount
+    return name, weight
 
 
 def parse_ingredients_recipe(text: str) -> ParsedIngredients:
@@ -95,7 +136,33 @@ def parse_ingredients_recipe(text: str) -> ParsedIngredients:
     return parsed
 
 
-def parse_ingredients_menu(text: str) -> ParsedIngredients:
+def parse_ingredients(
+    text: str | ParsedIngredients,
+) -> ParsedIngredients:
+    if isinstance(text, list):
+        return text
+
+    if isinstance(text, dict):
+        return text["ingredients"]
+
+    parsed: ParsedIngredients = []
+
+    for line in text.splitlines():
+        result = parse_ingredient_line(line)
+
+        if result is None:
+            continue
+
+        parsed.append(
+            {
+                "name": result[0],
+                "weight": result[1],
+            }
+        )
+
+    return parsed
+
+def parse_ingredients_menu(text: str) -> MenuIngredients:
     """
     Извлекает ингредиенты из текста дневного меню.
 
@@ -106,11 +173,11 @@ def parse_ingredients_menu(text: str) -> ParsedIngredients:
     завтрак, обед, ужин, перекус.
 
     :param text: Текст меню от ИИ.
-    :return: Список словарей с ключами meal, name и weight.
+    :return: Список словарей с ключами meal, dish, name и weight.
     """
     parsed: ParsedIngredients = []
     current_meal: str | None = None
-    dish_name: str | None = None
+    dish_name: str = ""
 
     for line in text.splitlines():
         lower_line = line.lower().strip()
@@ -120,7 +187,7 @@ def parse_ingredients_menu(text: str) -> ParsedIngredients:
 
             if meal_name in choice_menu:
                 current_meal = meal_name
-                dish_name = None
+                dish_name = ""
 
             continue
 
@@ -227,6 +294,9 @@ def clean_recipe_dish(text: str) -> str:
     for line in lines:
         stripped = line.strip()
 
+        if any(marker in stripped.lower() for marker in STOP_MARKERS):
+            break
+
         if not stripped:
             if kept:
                 kept.append("")
@@ -266,3 +336,18 @@ def clean_recipe_dish(text: str) -> str:
     )
 
     return result.strip()
+
+def extract_ingredients_block(text: str) -> str:
+    lowered = text.lower()
+
+    start = lowered.find("ингредиенты:")
+    if start == -1:
+        return ""
+
+    end = lowered.find("приготовление:", start)
+
+    if end == -1:
+        return text[start:]
+
+    return text[start:end]
+

@@ -2,10 +2,16 @@ import json
 from datetime import datetime
 
 from rapidfuzz import process
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import (
+    BaseModel,
+    Field,
+    ValidationError,
+)
 
-from ai.gigachat import get_access_token, call_gigachat, call_chat_with_fallback
-from db.repositories import create_food_log
+from ai.gigachat import (
+    call_gigachat,
+    call_chat_with_fallback
+)
 from nutrition.nutrition_cache import DATA_DIR
 
 

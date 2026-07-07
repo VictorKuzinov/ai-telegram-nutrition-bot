@@ -8,6 +8,18 @@ DATA_DIR = BASE_DIR / "data"
 
 cache_path = DATA_DIR / "missing_ingredients.json"
 
+SKIP_PRODUCTS = {
+    "мясо",
+    "рыба",
+    "речная рыба",
+    "морская рыба",
+    "овощи",
+    "фрукты",
+    "зелень",
+    "масло",
+    "сыр",
+}
+
 def load_cache(path: Path) -> list[IngredientRecord]:
     """
     Загружает кэш не найденных ингредиентов.
@@ -35,6 +47,9 @@ def save_or_increment_cache(path: Path, items: list[str]) -> None:
         normalized_item = normalize_name(item)
 
         if not normalized_item:
+            continue
+
+        if normalized_item.lower() in SKIP_PRODUCTS:
             continue
 
         search_lower = normalized_item.lower()

@@ -7,7 +7,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from pathlib import Path
 
-from ai.local_model_vl import call_local_vision, call_local_chat
+from ai.local_model_vl import call_local_chat
 from config_ai import (
     PROMPT_GIGACHAT,
     CONFIG,
@@ -16,17 +16,35 @@ from config_ai import (
     generate_user_prompt_recipe,
     generate_user_prompt_menu,
     generate_user_prompt_repeat,
+    generate_user_prompt_repeat_recipe_ingredientd,
+    generate_user_prompt_repeat_recipe, generate_user_prompt_new_recipe,
 )
 from nutrition.nutrition_calc import (
     calculate_nutrition,
-    footer,
 )
 from services.message_ai_parser import (
-    clean_recipe_output,
     parse_ingredients_menu,
 )
-from services.message_builder import scale_menu_weights, group_menu_by_meal, build_menu_text_from_parsed, \
-    normalize_piece_units, find_bad_items, replace_generic_products, merge_duplicate_items
+from services.message_builder import (
+    scale_menu_weights,
+    group_menu_by_meal,
+    build_menu_text_from_parsed,
+    normalize_piece_units,
+    find_bad_items,
+    replace_generic_products,
+    merge_duplicate_items,
+    merge_duplicate_recipe_items,
+    normalize_taste_units,
+    normalize_spoon_units,
+    parse_recipe_blocks,
+    build_recipe_text,
+    normalize_ai_markdown,
+    split_parentheses_products,
+)
+from services.recipe_utils import get_required_ingredients
+from validators.recipe_validators import (
+    validate_recipe,
+    RecipeValidationResult)
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -55,6 +73,8 @@ models_ai_image = [
 models_ai_chat = [
     "GigaChat"
 ]
+
+
 
 class GigaChatError(Exception):
     """Базовое исключение для ошибок GigaChat API."""
@@ -177,6 +197,12 @@ def get_access_token() -> str:
         logger.error(error_msg)
         raise GigaChatAuthError(error_msg) from e
 
+def refresh_access_token() -> str:
+    global _cached_token
+
+    _cached_token = None
+    return get_access_token()
+
 def download_image(image_url: str, path: str):
     r = requests.get(image_url)
     with open(path, "wb") as f:
@@ -205,6 +231,11 @@ def upload_gigachat_file(image_path: str, token: str) -> str | None:
     logger.debug("UPLOAD:", result)
 
     if response.status_code != 200:
+        logger.error(
+            "Upload error %s: %s",
+            response.status_code,
+            result,
+        )
         return None
 
     return result.get("id")
@@ -262,8 +293,16 @@ def call_gigachat_vision(image_path: str, token: str) -> str | None:
     file_id = upload_gigachat_file(image_path, token)
 
     if not file_id:
-        logger.debug("File_id: %s", file_id)
-        return None
+        logger.info("GigaChat upload failed. Refresh token and retry upload.")
+
+        token = refresh_access_token()
+        file_id = upload_gigachat_file(image_path, token)
+
+        if not file_id:
+            logger.debug("File_id: %s", file_id)
+            return None
+
+    last_response = None
 
     for model in models_ai_image:
         payload = {
@@ -280,20 +319,47 @@ def call_gigachat_vision(image_path: str, token: str) -> str | None:
         response = send_url_request(url=URL_AI, token=token, payload=payload)
         logger.info("Делаем запрос к model=%s", model)
 
+        if response is None:
+            continue
+
+        last_response = response
+
+        if response.status_code == 401:
+            logger.info("GigaChat vision token expired. Refresh token and retry.")
+
+            token = refresh_access_token()
+
+            response = send_url_request(
+                url=URL_AI,
+                token=token,
+                payload=payload,
+            )
+
+            if response is None:
+                continue
+
+            last_response = response
+
         if response.status_code == 200:
-            break
+            result = response.json()
+            logger.debug("CHAT: %s", result)
+            return result["choices"][0]["message"].get("content")
 
-    result = response.json()
-    logger.debug("CHAT: %s", result)
+    if last_response is not None:
+        try:
+            result = last_response.json()
+        except ValueError:
+            result = last_response.text
 
-    if response.status_code != 200:
         logger.error(
             "GigaChat vision error %s: %s",
-            response.status_code, result,
+            last_response.status_code,
+            result,
         )
-        return None
+    else:
+        logger.error("GigaChat vision error: no response from all models")
 
-    return result["choices"][0]["message"].get("content")
+    return None
 
 def call_gigachat(token: str, mode: str, user_prompt: str) -> str | None:
     if os.getenv("FORCE_GIGACHAT_FAIL") == "1":
@@ -317,6 +383,23 @@ def call_gigachat(token: str, mode: str, user_prompt: str) -> str | None:
             continue
 
         last_response = response
+
+        if response.status_code == 401:
+            logger.info("GigaChat token expired. Refresh token and retry.")
+
+            token = refresh_access_token()
+
+            response = send_gigachat_request(
+                token,
+                model,
+                system_content,
+                user_prompt,
+            )
+
+            if response is None:
+                continue
+
+            last_response = response
 
         if response.status_code == 200:
             result = response.json()
@@ -370,16 +453,104 @@ def call_chat_with_fallback(
         system_prompt=system_prompt,
     )
 
-if __name__ == "__main__":
 
+def process_recipe_ai_text(content: str, mode: str) -> tuple[str, RecipeValidationResult]:
+    content = normalize_ai_markdown(content)
+    content = normalize_piece_units(content)
+    content = normalize_taste_units(content)
+    content = normalize_spoon_units(content)
+
+    parsed_recipe = parse_recipe_blocks(content)
+
+    parsed_recipe["ingredients"] = split_parentheses_products(parsed_recipe["ingredients"])
+    parsed_recipe["ingredients"] = replace_generic_products(parsed_recipe["ingredients"], mode)
+    parsed_recipe["ingredients"] = merge_duplicate_recipe_items(parsed_recipe["ingredients"])
+
+    recipe_text = build_recipe_text(parsed_recipe)
+    validation = validate_recipe(recipe_text)
+
+    return recipe_text, validation
+
+def repair_recipe(
+    mode: str,
+    title: str,
+    recipe_text: str,
+    validation: RecipeValidationResult,
+) -> str | None:
+    has_ingredient_errors = any(
+        "Неконкретный ингредиент:" in error
+        or "Ингредиент содержит пояснение" in error
+        for error in validation.errors
+    )
+    print(recipe_text)
+    print(validation.errors)
+    has_technology_errors = any(
+        "Некорректная технология приготовления:" in error
+        for error in validation.errors
+    )
+
+    has_required_ingredients_errors = any(
+        "В рецепте отсутствует один из обязательных ингредиентов:" in error
+        for error in validation.errors
+    )
+
+    parsed_recipe = parse_recipe_blocks(recipe_text)
+
+    user_message = None
+
+    if has_required_ingredients_errors:
+        required_ingredients = get_required_ingredients(parsed_recipe["title"])
+
+        user_message = generate_user_prompt_new_recipe(
+            parsed_recipe,
+            title,
+            required_ingredients,
+        )
+
+    elif has_ingredient_errors:
+        user_message = generate_user_prompt_repeat_recipe_ingredientd(
+            parsed_recipe,
+            validation.errors,
+        )
+
+    elif has_technology_errors:
+
+        print("Parsed:", recipe_text)
+        user_message = generate_user_prompt_repeat_recipe(
+            recipe_text
+        )
+
+    if user_message is None:
+        print("Не удалось определить тип ошибки для repair_recipe")
+        return None
+
+    print(user_message)
+
+    content = call_chat_with_fallback(
+        mode=mode,
+        user_prompt=user_message,
+    )
+
+    if content is None:
+        return None
+
+    recipe_text, validation = process_recipe_ai_text(content, mode)
+
+    if validation.is_valid:
+        return recipe_text
+
+    print("Ошибка после repair:\n", validation.errors)
+    return None
+
+def main():
     access_token = get_access_token()
 
     # Данные для user_prompt рецепта
     data = {}
-    data["recipe"] = "Суп с грибами"
-    data["persons"] = "на 6 человек"
-    data["kcal"] = "на 1000 килокалорий"
-    data["wishes"] = "Нет"
+    data["recipe"] = "Шурпа"
+    data["persons"] = "на 4 человека"
+    data["kcal"] = "на 1800 килокалорий"
+    data["wishes"] = "Узбекская кухня"
 
     # Данные для user_prompt меню
     menu = {}
@@ -387,30 +558,38 @@ if __name__ == "__main__":
     menu["meal_count"] = 3
     menu["wishes"] = "Нет"
 
-    mode = "menu"
+    mode = "recipe"
 
 
     if mode == "recipe":
-    #     with open(DATA_DIR / "ingredients.json", "r", encoding="utf-8") as f:
-    #         ingredient_data = json.load(f)
-    #
-    #     aliases_index = build_aliases_index(ingredient_data)
-    #
-    #     content = find_food_by_name(data["recipe"], aliases_index)
 
         user_message = generate_user_prompt_recipe(data=data)
         content = call_chat_with_fallback(
             mode=mode,
             user_prompt=user_message,
         )
+        print(content)
+        if content is None:
+            return
 
-        if not content:
-            print("⚠️ Не удалось получить ответ от AI.")
+        recipe_text, validation = process_recipe_ai_text(content, mode)
+
+        if validation.is_valid:
+            print(recipe_text)
+            return recipe_text
         else:
-            result = clean_recipe_output(content)
-            print(result)
-    else:
-        answer = ""
+            print("Ошибка:\n", validation.errors)
+            parsed_recipe = parse_recipe_blocks(recipe_text)
+            recipe_text = build_recipe_text(parsed_recipe)
+            result = repair_recipe(mode, data["recipe"], recipe_text, validation)
+            if result is None:
+                print("ИИ не смог создать рецепт")
+                print(result)
+            else:
+                print(result)
+
+
+    if mode == "menu":
 
         user_message = generate_user_prompt_menu(menu, daily_kcal=kcal)
 
@@ -422,7 +601,7 @@ if __name__ == "__main__":
         content = normalize_piece_units(content)
         parsed_menu = parse_ingredients_menu(content)
         print(parsed_menu)
-        parsed_menu = replace_generic_products(parsed_menu)
+        parsed_menu = replace_generic_products(parsed_menu, mode)
         parsed_menu = merge_duplicate_items(parsed_menu)
         print(parsed_menu)
         bad_items = find_bad_items(parsed_menu)
@@ -472,25 +651,20 @@ if __name__ == "__main__":
 
             print(new_total)
             print(build_menu_text_from_parsed(scaled_menu))
-        #
-        #     answer += "=" * 20
-        #     answer += f"\nПриём пищи: {meal_name}"
-        #     answer += footer(total, "menu")
-        #
-        #     if not_found:
-        #         answer += "\n⚠ Не учтены в расчёте:\n"
-        #         for item in not_found:
-        #             answer += f"- {item}\n"
-        #
-        # print(answer)
-    # # Данные для запроса определения по фотографии
-    # image_url = "https://i.ibb.co/whzjRQ6Z/image.jpg"  # плов
-    # # image_url = "https://i.ibb.co/sJsXgjSh/download.jpg" ## борщ
-    #
-    # image_path =  "D://AI//projects//ai-telegram-nutrition-bot//picture//uploads//plow.jpg"
-    #
-    # download_image(image_url, str(image_path))
-    #
-    # result = call_gigachat_vision(str(image_path), access_token)
-    #
-    # logger.info(result)
+    if mode == "photo":
+        # Данные для запроса определения по фотографии
+        image_url = "https://i.ibb.co/whzjRQ6Z/image.jpg"  # плов
+        # image_url = "https://i.ibb.co/sJsXgjSh/download.jpg" ## борщ
+
+        image_path =  "D://AI//projects//ai-telegram-nutrition-bot//picture//uploads//plow.jpg"
+
+        download_image(image_url, str(image_path))
+
+        result = call_gigachat_vision(str(image_path), access_token)
+
+        logger.info(result)
+
+
+if __name__ == "__main__":
+
+   main()

@@ -1,6 +1,7 @@
 import re
-from typing import TypedDict
+from typing import TypedDict, TypeVar
 
+from config_ai import FORBIDDEN_PRODUCTS
 from nutrition.nutrition_calc import (
     ACTIVITY_LEVELS,
     TARGETS,
@@ -8,6 +9,19 @@ from nutrition.nutrition_calc import (
     calc_base_calories,
     calc_energy_total,
     calculate_bju,
+)
+from services.message_ai_parser import (
+    RecipeIngredients,
+    parse_ingredients_recipe,
+    RecipeIngredient,
+    MenuIngredient,
+    STOP_MARKERS,
+)
+
+T = TypeVar(
+    "T",
+    RecipeIngredient,
+    MenuIngredient,
 )
 
 UNIT_TO_GRAMS = {
@@ -19,27 +33,86 @@ UNIT_TO_GRAMS = {
     "огурец": 100,
 }
 
+TASTE_TO_GRAMS = {
+    "соль": 5,
+    "перец": 1,
+    "сахар": 10,
+    "паприка": 2,
+    "карри": 2,
+    "зелень": 10,
+    "специи": 2,
+    "чеснок": 5,
+}
+
+SPOON_TO_GRAMS = {
+    "соль": {
+        "1/2 чайной" : 3,
+        "1/2 ч": 3,
+        "чайная": 5,
+        "ч": 5,
+        "1/2 столовой": 12,
+        "1/2 ст": 12,
+        "столовая": 25,
+        "ст": 25,
+    },
+    "перец": {
+        "1/2 чайной" : 1,
+        "1/2 ч": 1,
+        "чайная": 2,
+        "ч": 2,
+        "1/2 столовой": 3,
+        "1/2 ст": 3,
+        "столовая": 6,
+        "ст": 6,
+    },
+    "сахар": {
+        "1/2 чайной": 2.5,
+        "1/2 ч": 2.5,
+        "чайная": 5,
+        "ч": 5,
+        "1/2 столовой": 10,
+        "1/2 ст": 10,
+        "столовая": 20,
+        "ст": 20,
+    },
+}
+
+KEEP_BASE_NAME_PRODUCTS = {
+    "фарш",
+}
+
 AUTO_REPLACE_PRODUCTS = {
     "масло": "сливочное масло",
+    "маслa": "сливочное масло",
     "орехи": "грецкий орех",
     "овощи": "огурец",
     "фрукты": "яблоко",
-    "зелень": "укроп"
+    "зелень": "укроп",
+    "рыба": "треска",
+    "мясо": "говядина",
+    "хлеб": "хлеб пшеничный",
+    "растительное масло": "подсолнечное масло",
+    "смесь специй": "паприка",
+    "специи": "паприка"
 }
 
-FORBIDDEN_PRODUCTS = {
-    "овощи",
-    "фрукты",
-    "зелень",
-    "орехи",
-    "рыба",
-    "мясо",
-    "масло",
-    "мясо",
-    "сыр",
+AUTO_REPLACE_RECIPE = {
+    "масло": "подсолнечное масло",
+    "орехи": "грецкий орех",
+    "овощи": "огурец",
+    "фрукты": "яблоко",
+    "зелень": "укроп",
+    "рыба": "треска",
+    "мясо": "говядина",
+    "хлеб": "хлеб пшеничный",
+    "растительное масло": "подсолнечное масло",
 }
 
 
+class ParsedRecipe(TypedDict):
+    title: str
+    ingredients: RecipeIngredients
+    steps: str
 
 
 class ProfileResults(TypedDict):
@@ -242,7 +315,7 @@ def group_menu_by_meal(parsed_menu: list[dict]) -> dict[str, list[dict]]:
 
 def normalize_piece_units(text: str) -> str:
     pattern = re.compile(
-        r"-\s*(?P<name>[а-яёА-ЯЁ\s]+)\s*[—-]\s*(?P<count>\d+)\s*шт",
+        r"-\s*(?P<name>[а-яёА-ЯЁ\s]+)\s*[—-]\s*(?P<count>\d+(?:[.,]\d+)?)\s*(шт|зубчик(?:а|ов)?)",
         re.IGNORECASE,
     )
 
@@ -260,14 +333,144 @@ def normalize_piece_units(text: str) -> str:
 
     return pattern.sub(replace, text)
 
-def replace_generic_products(parsed_menu: list[dict]) -> list[dict]:
+def normalize_taste_units(text: str) -> str:
+
+    pattern = re.compile(
+        r"-\s*(?P<name>[а-яёА-ЯЁ\s]+(?:\([^)]*\))?)\s*[—-]\s*по\s*вкусу",
+        re.IGNORECASE,
+    )
+
+    def replace(match: re.Match) -> str:
+        name = match.group("name").strip().lower()
+
+        base_name = name.partition("(")[0].strip()
+
+        if base_name in TASTE_TO_GRAMS:
+            grams = TASTE_TO_GRAMS[base_name]
+        else:
+            return match.group(0)
+
+        return f"- {name} — {grams} г"
+
+    return pattern.sub(replace, text)
+
+def normalize_spoon_units(text: str) -> str:
+    pattern = re.compile(
+        r"-\s*(?P<name>соль|перец)\s*[—-]\s*(?P<count>\d+(?:[.,]\d+)?)\s*(?P<spoon>чайная|ч\.?|столовая|ст\.?)\s+ложк[аи]?",
+        re.IGNORECASE,
+    )
+
+    def replace(match: re.Match) -> str:
+        name = match.group("name").lower()
+        count = float(match.group("count").replace(",", "."))
+        spoon = match.group("spoon").lower().replace(".", "")
+
+        grams_per_spoon = SPOON_TO_GRAMS[name][spoon]
+        grams = round(count * grams_per_spoon)
+
+        return f"- {name} — {grams} г"
+
+    return pattern.sub(replace, text)
+
+def normalize_ai_markdown(text: str) -> str:
+    text = text.replace("**", "")
+    text = text.replace("__", "")
+    return text
+
+# def normalize_parentheses_products(ingredients: RecipeIngredients) -> RecipeIngredients:
+#     result = []
+#
+#     for item in ingredients:
+#         new_item = item.copy()
+#         name = new_item["name"].strip().lower()
+#
+#         if name.startswith("мясо (") and name.endswith(")"):
+#             inside = name.split("(", 1)[1].rstrip(")").strip()
+#             first_product = inside.split(",")[0].strip()
+#             new_item["name"] = first_product
+#
+#         elif name.startswith("рыба (") and name.endswith(")"):
+#             inside = name.split("(", 1)[1].rstrip(")").strip()
+#             first_product = inside.split(",")[0].strip()
+#             new_item["name"] = first_product
+#
+#         elif name.startswith("овощи (") and name.endswith(")"):
+#             inside = name.split("(", 1)[1].rstrip(")").strip()
+#             first_product = inside.split(",")[0].strip()
+#             new_item["name"] = first_product
+#
+#         elif name.startswith("зелень (") and name.endswith(")"):
+#             inside = name.split("(", 1)[1].rstrip(")").strip()
+#             first_product = inside.split(",")[0].strip()
+#             new_item["name"] = first_product
+#
+#         result.append(new_item)
+#
+#     return result
+
+def split_parentheses_products(
+    ingredients: RecipeIngredients,
+) -> RecipeIngredients:
+
+    result: RecipeIngredients = []
+
+    for item in ingredients:
+        name = item["name"].strip().lower()
+        weight = float(item["weight"])
+
+        before, sep, after = name.partition("(")
+
+        if not sep or ")" not in after:
+            result.append(item)
+            continue
+
+        base_name = before.strip()
+
+        if base_name in KEEP_BASE_NAME_PRODUCTS:
+            new_item = item.copy()
+            new_item["name"] = base_name
+            result.append(new_item)
+            continue
+
+        if base_name not in FORBIDDEN_PRODUCTS:
+            result.append(item)
+            continue
+
+        inside = after.partition(")")[0]
+
+        products = [
+            product.strip()
+            for product in inside.split(",")
+            if product.strip()
+        ]
+
+        if not products:
+            result.append(item)
+            continue
+
+        base_weight = round(weight / len(products))
+        weights = [base_weight] * len(products)
+        diff = round(weight - sum(weights))
+        weights[-1] += diff
+
+        for product_name, product_weight in zip(products, weights):
+            new_item = item.copy()
+            new_item["name"] = product_name
+            new_item["weight"] = float(product_weight)
+            result.append(new_item)
+
+    return result
+
+def replace_generic_products(iingredients: list[T], mode: str) -> list[T]:
     result = []
 
-    for item in parsed_menu:
+    for item in iingredients:
         new_item = item.copy()
         name = new_item["name"].strip().lower()
 
-        if name in AUTO_REPLACE_PRODUCTS:
+        if mode == "recipe" and name in AUTO_REPLACE_PRODUCTS:
+            new_item["name"] = AUTO_REPLACE_RECIPE[name]
+        if mode == "menu" and name in FORBIDDEN_PRODUCTS:
             new_item["name"] = AUTO_REPLACE_PRODUCTS[name]
 
         result.append(new_item)
@@ -298,3 +501,76 @@ def merge_duplicate_items(parsed_menu: list[dict]) -> list[dict]:
             merged[key]["weight"] += item["weight"]
 
     return list(merged.values())
+
+def merge_duplicate_recipe_items(parsed_recipe: list[dict]) -> list[dict]:
+    merged: dict[tuple[str, str], dict] = {}
+
+    for item in parsed_recipe:
+
+        name = item["name"].strip().lower()
+        key = (name)
+
+        if key not in merged:
+            new_item = item.copy()
+            new_item["name"] = name
+            merged[key] = new_item
+        else:
+            merged[key]["weight"] += item["weight"]
+
+    return list(merged.values())
+
+def parse_recipe_blocks(text: str) -> ParsedRecipe:
+    title = ""
+    ingredients_block = ""
+    steps = ""
+
+    current_block = ""
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        stripped = stripped.strip("*_ ")
+
+        if any(marker in stripped.lower() for marker in STOP_MARKERS):
+            break
+
+        if stripped.startswith("Название:"):
+            current_block = "title"
+            title = stripped.replace("Название:", "", 1).strip()
+            continue
+
+        if stripped.startswith("Ингредиенты:"):
+            current_block = "ingredients"
+            continue
+
+        if stripped.startswith("Приготовление:"):
+            current_block = "steps"
+            continue
+
+        if current_block == "ingredients":
+            ingredients_block += line + "\n"
+
+        elif current_block == "steps":
+            steps += line + "\n"
+
+    return {
+        "title": title,
+        "ingredients": parse_ingredients_recipe(ingredients_block),
+        "steps": steps.strip(),
+    }
+
+def build_recipe_text(recipe: ParsedRecipe) -> str:
+    lines = []
+
+    lines.append(f"Название: {recipe['title']}")
+    lines.append("")
+    lines.append("Ингредиенты:")
+
+    for item in recipe["ingredients"]:
+        lines.append(f"- {item['name']} — {round(item['weight'])} г")
+
+    lines.append("")
+    lines.append("Приготовление:")
+    lines.append(recipe["steps"])
+
+    return "\n".join(lines).strip()
+
