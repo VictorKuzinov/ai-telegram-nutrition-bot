@@ -267,9 +267,9 @@ async def dish_handler_delete(
 
     delete_food_log(log_id)
 
+    await state.clear()
     await message.answer("🗑 Запись удалена.",
                          reply_markup=diary_menu_keyboard,)
-    await state.clear()
 
 @router.message(F.text == "✏️ Изменить")
 async def update_dish_diary_handler(
@@ -289,6 +289,7 @@ async def dish_handler_update(
 
     if not data.get("log_map"):
         await message.answer("Сначала откройте дневник за сегодня.")
+        await state.clear()
         return
 
     text = message.text.strip()
@@ -445,16 +446,6 @@ async def dish_edit_weight_handler(
         await state.clear()
         return
 
-    # food_log_data = {
-    #     "user_id": profile.id,
-    #     "food_name": data["name"],
-    #     "weight": data["weight"],
-    #     "kcal": total["kcal"],
-    #     "protein": total["protein"],
-    #     "fat": total["fat"],
-    #     "carbs": total["carbs"],
-    #     "source": "manual",
-    # }
     food_log_data = {
         "user_id": profile.id,
         "food_name": portion["name_ru"],
@@ -505,13 +496,12 @@ async def dish_edit_weight_handler(
         f"⚖️ Вес: {food_log_data['weight']} г"
     )
 
+    await state.clear()
     await message.answer(
         f"⚠️ КБЖУ рассчитано ИИ приблизительно.\n\n"
         + footer(total_for_footer, "recipe"),
         reply_markup=diary_menu_keyboard,
     )
-
-    await state.clear()
 
 @router.message(F.text == "🔥 Остаток")
 async def remainder_kcal_handler(

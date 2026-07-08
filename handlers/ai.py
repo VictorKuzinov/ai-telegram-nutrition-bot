@@ -58,34 +58,18 @@ from services.message_builder import (
     scale_menu_weights,
     parse_recipe_blocks,
 )
-from services.recipe_utils import extract_recipe_name
 from states import (
     PhotoForm,
     RecipeForm,
     MenuForm
 )
-from validators.recipe_validators import RecipeValidationResult
+from validators.recipe_validators import validate_recipe_title
 
 router = Router()
 
 UPLOAD_DIR = Path("picture/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-def validate_recipe_title(
-    requested_title: str,
-    recipe_text: str,
-    result: RecipeValidationResult,
-) -> None:
-    actual_title = extract_recipe_name(recipe_text)
-
-    if not actual_title:
-        result.add_error("Не найдено название рецепта.")
-        return
-
-    if requested_title.lower().strip() not in actual_title.lower().strip():
-        result.add_error(
-            f"Название рецепта не соответствует запросу: ожидалось '{requested_title}', получено '{actual_title}'."
-        )
 
 @router.message(F.text == "🤖 AI функции")
 async def ai_menu_handler(

@@ -214,7 +214,7 @@ CONFIG = {
             3. ...
         """,
         "temperature": 0.05,
-        "max_tokens": 500,
+        "max_tokens": 1200,
     },
     "chat": {
         "system_prompt": """
