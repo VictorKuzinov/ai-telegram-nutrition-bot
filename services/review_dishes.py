@@ -1,0 +1,313 @@
+import json
+import os
+from os.path import join
+from pathlib import Path
+
+import dotenv
+
+from nutrition.nutrition_cache import load_cache
+from services.ingredient_lookup import build_aliases_index
+from services.sync_usda_candidates import (
+    translate_to_en,
+    make_plural_ru,
+    fetch_usda_data,
+    normalize_usda,
+    transform_to_internal,
+    append_to_main_db,
+)
+
+dotenv.load_dotenv()
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
+
+dish_path = DATA_DIR / "review_dishes.json"
+
+API_KEY = os.getenv("USDA_API_KEY")
+
+nutrition_prompts = {
+    "kcal_per_100g": "Введите калории на 100 грамм: ",
+    "protein_per_100g": "Введите белок на 100 грамм: ",
+    "fat_per_100g": "Введите белок на 100 грамм: ",
+    "carbs_per_100g": "Введите углеводы на 100 грамм: ",
+}
+def get_dishes_candidates(path: Path) -> list[dict]:
+    data = load_cache(path)
+
+    return [
+        item
+        for item in data
+        if item.get("status") == "pending"
+    ]
+
+def build_food_from_ai(record: dict) -> dict | None:
+    if record is None:
+        return None
+
+    name_en = record["name_en"].strip().lower()
+
+    return {
+        "id": name_en.replace(" ", "_"),
+        "name_ru": record["name_ru"],
+        "name_en": record["name_en"],
+        "aliases_ru": record.get("aliases_ru", []),
+        "aliases_en": record.get("aliases_en", []),
+        "kcal_per_100g": record["kcal_per_100g"],
+        "protein_per_100g": record["protein_per_100g"],
+        "fat_per_100g": record["fat_per_100g"],
+        "carbs_per_100g": record["carbs_per_100g"],
+        "category": "dish",
+        "region": ["ru", "eu"],
+        "unit": "g",
+        "source": "ai_review",
+    }
+
+def input_float(prompt: str) -> float:
+    while True:
+        value = input(prompt).strip()
+        try:
+            return float(value)
+        except ValueError:
+            print("Некорректный ввод числа. Повторите.")
+
+def build_food_from_manual(record: dict) -> dict | None:
+    if record is None:
+        return None
+
+    name_ru = record["name_ru"].strip()
+    name_en = record["name_en"].strip().lower()
+
+    print("\nНовое блюдо:")
+    print(f"Русское название: {name_ru}")
+    print(f"EN название: {name_en}")
+
+    while True:
+        for field, prompt in nutrition_prompts.items():
+            record[field] = input_float(prompt)
+
+        confirmation = input("Подтвердить? [Y/n]: ").strip().lower()
+
+        if confirmation in ("", "y"):
+            return {
+                "id": name_en.replace(" ", "_"),
+                "name_ru": record["name_ru"],
+                "name_en": record["name_en"],
+                "aliases_ru": record.get("aliases_ru", []),
+                "aliases_en": record.get("aliases_en", []),
+                "kcal_per_100g": record["kcal_per_100g"],
+                "protein_per_100g": record["protein_per_100g"],
+                "fat_per_100g": record["fat_per_100g"],
+                "carbs_per_100g": record["carbs_per_100g"],
+                "category": "dish",
+                "region": ["ru", "eu"],
+                "unit": "g",
+                "source": "manual_review",
+            }
+
+        if confirmation == "n":
+            print("Пропущено")
+            return None
+
+def compare_ai_usda(ai_record: dict, usda_record: dict) -> None:
+    print("\nСравнение AI и USDA:")
+    print(f"Блюдо: {ai_record['name_ru']}")
+    print()
+
+    print("AI:")
+    print(f"Ккал: {ai_record['kcal_per_100g']}")
+    print(f"Белки: {ai_record['protein_per_100g']}")
+    print(f"Жиры: {ai_record['fat_per_100g']}")
+    print(f"Углеводы: {ai_record['carbs_per_100g']}")
+    print()
+
+    print("USDA:")
+    print(f"Ккал: {usda_record['kcal_per_100g']}")
+    print(f"Белки: {usda_record['protein_per_100g']}")
+    print(f"Жиры: {usda_record['fat_per_100g']}")
+    print(f"Углеводы: {usda_record['carbs_per_100g']}")
+    print()
+
+def approve_new_food(record: dict, aliases_index: dict) -> dict | None:
+    name_ru = record["name_ru"]
+    normalized_name = name_ru.lower().strip()
+
+    if normalized_name in aliases_index:
+        print(f"Уже есть в базе: {name_ru} -> {aliases_index[normalized_name]}")
+        return None
+
+    default_name_en = translate_to_en(name_ru).strip().lower()
+    default_aliases_ru = make_plural_ru(name_ru).strip().lower()
+    default_aliases_en = translate_to_en(default_aliases_ru).strip().lower()
+
+    while True:
+        print("\nНовое блюдо:")
+        print(f"Русское название: {name_ru}")
+        print(f"RU мн. число: {default_aliases_ru}")
+        print(f"EN ед. число: {default_name_en}")
+        print(f"EN мн. число: {default_aliases_en}")
+
+        action = input(
+            "[Y]-принять/[E]-изменить/[S]-пропустить, выбери действие: "
+        ).strip().lower()
+
+        if action == "e":
+            record["aliases_ru"] = [
+                alias.strip()
+                for alias in input("Введите RU алиасы через запятую: ").split(",")
+                if alias.strip()
+            ]
+            record["name_en"] = input("Введите EN ед. число: ").strip().lower()
+
+            record["aliases_en"] = [
+                alias.strip()
+                for alias in input("Введите EN алиасы через запятую: ").split(",")
+                if alias.strip()
+            ]
+            # continue
+        elif action in ("", "y"):
+            record["name_en"] = default_name_en
+            record["aliases_ru"] = [default_aliases_ru]
+            record["aliases_en"] = [default_aliases_en]
+        elif action == "s":
+            print(f"Блюдо пропущено: {name_ru}")
+            return None
+        else:
+            print("Ввден не корректный символ, попробуйте ещё раз...")
+            continue
+
+        print(f"По продукту: {name_ru}, вы ввели:")
+        print("RU алиасы:", ", ".join(record['aliases_ru']))
+        print("EN алиасы:", ", ".join(record['aliases_en']))
+        print("EN ед. число:", record["name_en"])
+        confirmation = input("Теперь подтвердить? [Y/n]: ").strip().lower()
+
+        if confirmation in ("", "y"):
+            break
+
+    return record
+
+def add_as_new_food(record: dict, aliases: dict) -> dict | None:
+    name_dish = record["name_ru"].strip().lower()
+
+    confirmation = input(f"Будем добавлять: {name_dish} [Y/n]: ").strip().lower()
+
+    if confirmation in ("n", "no", "нет", "н"):
+        print("Пропущено")
+        return None
+
+    if confirmation not in ("", "y", "yes", "да", "д"):
+        print("Неизвестный ответ, пропускаю")
+        return None
+
+    record = approve_new_food(record, aliases)
+
+    if not record:
+        return None
+
+    print("Подготовлена запись:", record)
+
+    usda_data = fetch_usda_data(record["name_en"])
+
+    print("\nAI estimate:")
+    print(record)
+
+    if usda_data:
+        usda_normalized = normalize_usda(usda_data)
+
+        print("\nUSDA candidate:")
+        print(usda_data["description"])
+        print(usda_normalized)
+    else:
+        usda_normalized = None
+        print("USDA ничего не нашла")
+
+    while True:
+        if usda_data:
+            choice = input(
+                "Что взять? [1-AI / 2-USDA / 3-manual / 4-skip / 5-compare]: "
+            ).strip()
+        else:
+            choice = input(
+                "Что взять? [1-AI / 3-manual / 4-skip]: "
+            ).strip()
+
+        if choice == "1":
+            return build_food_from_ai(record)
+
+        if choice == "2":
+            if not usda_data:
+                print("USDA-данных нет")
+                continue
+
+            return transform_to_internal(record, usda_data)
+
+        if choice == "3":
+            return build_food_from_manual(record)
+
+        if choice == "4":
+            print("Пропущено")
+            return None
+
+        if choice == "5":
+            if not usda_normalized:
+                print("Сравнение невозможно: USDA ничего не нашла")
+                continue
+
+            compare_ai_usda(record, usda_normalized)
+            continue
+
+        print("Неизвестный вариант, выберите снова.")
+
+def mark_review_dish_as_approved(record: dict) -> None:
+    if record is None:
+        print("Данных для миграции нет.")
+        return
+
+    data_dish = load_cache(dish_path)
+    found = False
+
+    for item in data_dish:
+        if item["name_ru"].lower().strip() == record["name_ru"].lower().strip():
+            item["status"] = "approved"
+            found = True
+            break
+
+    if found:
+        with open(dish_path, "w", encoding="utf-8") as f:
+            json.dump(data_dish, f, ensure_ascii=False, indent=2)
+
+def main() -> None:
+    candidates_dishes = get_dishes_candidates(dish_path)
+
+    if not candidates_dishes:
+        print("Новых блюд нет")
+        return
+
+    with open(DATA_DIR / "ingredients.json", "r", encoding="utf-8") as f:
+        ingredient_data = json.load(f)
+
+    aliases_index = build_aliases_index(ingredient_data)
+
+    print(f"Кандидатов на добавление: {len(candidates_dishes)}")
+
+    for candidate in candidates_dishes:
+        name_dish = candidate["name_ru"].strip().lower()
+        print("\nБлюдо", name_dish)
+
+        result = add_as_new_food(candidate, aliases_index)
+
+        if not result:
+            continue
+
+        print("\nГотовая запись для ingredients.json:")
+        print(result)
+
+        confirmation = input("Сохранить в ingredients.json? [Y/n]: ").strip().lower()
+
+        if confirmation in ("", "y", "yes", "да", "д"):
+            append_to_main_db(result)
+            mark_review_dish_as_approved(candidate)
+            print("Блюдо добавлено и помечено как approved.")
+
+if __name__ == "__main__":
+    main()

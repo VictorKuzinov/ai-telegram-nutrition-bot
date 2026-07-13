@@ -6,12 +6,20 @@ import sys
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-
 from dotenv import load_dotenv
+import urllib3
 
 from db.database import init_db
 from handlers.start import router as start_router
 from handlers.calc import router as calc_router
+from handlers.ai import router as ai_router
+from handlers.diary import router as diary_router
+from handlers.profile import router as profile_router
+
+urllib3.disable_warnings(
+    urllib3.exceptions.InsecureRequestWarning
+)
+
 
 load_dotenv()
 
@@ -20,6 +28,9 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 dp = Dispatcher()
 dp.include_router(start_router)
 dp.include_router(calc_router)
+dp.include_router(ai_router)
+dp.include_router(diary_router)
+dp.include_router(profile_router)
 
 
 async def main() -> None:

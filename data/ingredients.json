@@ -896,7 +896,8 @@
     "name_ru": "хлеб ржаной",
     "name_en": "rye bread",
     "aliases_ru": [
-      "черный хлеб"
+      "черный хлеб",
+      "хлеб черный"
     ],
     "aliases_en": [
       "black bread"
@@ -1149,7 +1150,8 @@
     "name_ru": "помидор",
     "name_en": "tomato",
     "aliases_ru": [
-      "томат"
+      "томат",
+      "помидоры крупные"
     ],
     "aliases_en": [
       "tomatoes"
@@ -1217,7 +1219,9 @@
     "name_ru": "кабачок",
     "name_en": "zucchini",
     "aliases_ru": [
-      "кабачки"
+      "кабачки",
+      "цукини",
+      "цуккини"
     ],
     "aliases_en": [
       "courgette"
@@ -1408,7 +1412,10 @@
     "id": "parsley",
     "name_ru": "петрушка",
     "name_en": "parsley",
-    "aliases_ru": [],
+    "aliases_ru": [
+      "зелень петрушки",
+      "петрушка зеленая"
+    ],
     "aliases_en": [],
     "kcal_per_100g": 36,
     "protein_per_100g": 3.0,
@@ -1426,7 +1433,10 @@
     "id": "dill",
     "name_ru": "укроп",
     "name_en": "dill",
-    "aliases_ru": [],
+    "aliases_ru": [
+      "зелень укропа",
+      "укроп зеленый"
+    ],
     "aliases_en": [],
     "kcal_per_100g": 43,
     "protein_per_100g": 3.5,
@@ -2254,8 +2264,12 @@
     "id": "caper",
     "name_ru": "каперс",
     "name_en": "caper",
-    "aliases_ru": ["каперсы"],
-    "aliases_en": ["capers"],
+    "aliases_ru": [
+      "каперсы"
+    ],
+    "aliases_en": [
+      "capers"
+    ],
     "kcal_per_100g": 27.0,
     "protein_per_100g": 0.0,
     "fat_per_100g": 0.0,
@@ -2272,8 +2286,17 @@
     "id": "olive",
     "name_ru": "оливка",
     "name_en": "olive",
-    "aliases_ru": ["оливки"],
-    "aliases_en": ["olives"],
+    "aliases_ru": [
+      "оливки",
+      "маслины",
+      "чёрные оливки",
+      "черные оливки",
+      "зелёные оливки",
+      "зеленые оливки"
+    ],
+    "aliases_en": [
+      "olives"
+    ],
     "kcal_per_100g": 133,
     "protein_per_100g": 0.0,
     "fat_per_100g": 13.3,
@@ -2290,14 +2313,22 @@
     "id": "chicken_soup",
     "name_ru": "суп куриный",
     "name_en": "chicken soup",
-    "aliases_ru": ["куриный суп", "суп из курицы"],
-    "aliases_en": ["chicken broth soup"],
+    "aliases_ru": [
+      "куриный суп",
+      "суп из курицы"
+    ],
+    "aliases_en": [
+      "chicken broth soup"
+    ],
     "kcal_per_100g": 40,
     "protein_per_100g": 3.5,
     "fat_per_100g": 2.0,
     "carbs_per_100g": 2.0,
     "category": "dish",
-    "region": ["ru", "eu"],
+    "region": [
+      "ru",
+      "eu"
+    ],
     "unit": "g",
     "source": "manual"
   },
@@ -2305,14 +2336,21 @@
     "id": "borscht",
     "name_ru": "борщ",
     "name_en": "borscht",
-    "aliases_ru": ["борщ суп"],
-    "aliases_en": ["beet soup"],
+    "aliases_ru": [
+      "борщ суп"
+    ],
+    "aliases_en": [
+      "beet soup"
+    ],
     "kcal_per_100g": 50,
     "protein_per_100g": 2.0,
     "fat_per_100g": 2.5,
     "carbs_per_100g": 5.5,
     "category": "dish",
-    "region": ["ru", "eu"],
+    "region": [
+      "ru",
+      "eu"
+    ],
     "unit": "g",
     "source": "manual"
   },
@@ -2320,14 +2358,21 @@
     "id": "shchi",
     "name_ru": "щи",
     "name_en": "cabbage soup",
-    "aliases_ru": ["щи капустные"],
-    "aliases_en": ["shchi"],
+    "aliases_ru": [
+      "щи капустные"
+    ],
+    "aliases_en": [
+      "shchi"
+    ],
     "kcal_per_100g": 35,
     "protein_per_100g": 1.5,
     "fat_per_100g": 1.5,
     "carbs_per_100g": 4.0,
     "category": "dish",
-    "region": ["ru", "eu"],
+    "region": [
+      "ru",
+      "eu"
+    ],
     "unit": "g",
     "source": "manual"
   },
@@ -2335,14 +2380,22 @@
     "id": "pasta",
     "name_ru": "паста",
     "name_en": "pasta",
-    "aliases_ru": ["макароны", "макароны с соусом"],
-    "aliases_en": ["pasta dish"],
+    "aliases_ru": [
+      "макароны",
+      "макароны с соусом"
+    ],
+    "aliases_en": [
+      "pasta dish"
+    ],
     "kcal_per_100g": 160,
     "protein_per_100g": 5.0,
     "fat_per_100g": 6.0,
     "carbs_per_100g": 22.0,
     "category": "dish",
-    "region": ["ru", "eu"],
+    "region": [
+      "ru",
+      "eu"
+    ],
     "unit": "g",
     "source": "manual"
   },
@@ -2350,14 +2403,21 @@
     "id": "pilaf",
     "name_ru": "плов",
     "name_en": "pilaf",
-    "aliases_ru": ["плов рисовый"],
-    "aliases_en": ["plov"],
+    "aliases_ru": [
+      "плов рисовый"
+    ],
+    "aliases_en": [
+      "plov"
+    ],
     "kcal_per_100g": 220,
     "protein_per_100g": 6.0,
     "fat_per_100g": 10.0,
     "carbs_per_100g": 25.0,
     "category": "dish",
-    "region": ["ru", "eu"],
+    "region": [
+      "ru",
+      "eu"
+    ],
     "unit": "g",
     "source": "manual"
   },
@@ -2365,14 +2425,21 @@
     "id": "omelette",
     "name_ru": "омлет",
     "name_en": "omelette",
-    "aliases_ru": ["яичный омлет"],
-    "aliases_en": ["omelet"],
+    "aliases_ru": [
+      "яичный омлет"
+    ],
+    "aliases_en": [
+      "omelet"
+    ],
     "kcal_per_100g": 150,
     "protein_per_100g": 10.0,
     "fat_per_100g": 11.0,
     "carbs_per_100g": 1.5,
     "category": "dish",
-    "region": ["ru", "eu"],
+    "region": [
+      "ru",
+      "eu"
+    ],
     "unit": "g",
     "source": "manual"
   },
@@ -2380,14 +2447,21 @@
     "id": "vegetable_salad",
     "name_ru": "салат овощной",
     "name_en": "vegetable salad",
-    "aliases_ru": ["овощной салат"],
-    "aliases_en": ["fresh vegetable salad"],
+    "aliases_ru": [
+      "овощной салат"
+    ],
+    "aliases_en": [
+      "fresh vegetable salad"
+    ],
     "kcal_per_100g": 60,
     "protein_per_100g": 1.5,
     "fat_per_100g": 3.5,
     "carbs_per_100g": 5.0,
     "category": "dish",
-    "region": ["ru", "eu"],
+    "region": [
+      "ru",
+      "eu"
+    ],
     "unit": "g",
     "source": "manual"
   },
@@ -2395,14 +2469,22 @@
     "id": "buckwheat_boiled",
     "name_ru": "гречка отварная",
     "name_en": "boiled buckwheat",
-    "aliases_ru": ["гречка", "каша гречневая"],
-    "aliases_en": ["buckwheat porridge"],
+    "aliases_ru": [
+      "гречка",
+      "каша гречневая"
+    ],
+    "aliases_en": [
+      "buckwheat porridge"
+    ],
     "kcal_per_100g": 110,
     "protein_per_100g": 4.0,
     "fat_per_100g": 1.0,
     "carbs_per_100g": 21.0,
     "category": "dish",
-    "region": ["ru", "eu"],
+    "region": [
+      "ru",
+      "eu"
+    ],
     "unit": "g",
     "source": "manual"
   },
@@ -2410,45 +2492,907 @@
     "id": "rice_boiled",
     "name_ru": "рис отварной",
     "name_en": "boiled rice",
-    "aliases_ru": ["рис", "рис вареный"],
-    "aliases_en": ["white rice cooked"],
+    "aliases_ru": [
+      "рис",
+      "рис вареный"
+    ],
+    "aliases_en": [
+      "white rice cooked"
+    ],
     "kcal_per_100g": 130,
     "protein_per_100g": 2.5,
     "fat_per_100g": 0.3,
     "carbs_per_100g": 28.0,
     "category": "dish",
-    "region": ["ru", "eu"],
+    "region": [
+      "ru",
+      "eu"
+    ],
     "unit": "g",
     "source": "manual"
   },
   {
-  "id": "vegetable_oil",
-  "name_ru": "растительное масло",
-  "name_en": "vegetable oil",
-  "aliases_ru": ["масло", "масло растительное"],
-  "aliases_en": ["oil", "vegetable oil"],
-  "kcal_per_100g": 884,
-  "protein_per_100g": 0,
-  "fat_per_100g": 100,
-  "carbs_per_100g": 0,
-  "category": "fat",
-  "region": ["ru", "eu"],
-  "unit": "g",
-  "source": "manual"
+    "id": "vegetable_oil",
+    "name_ru": "растительное масло",
+    "name_en": "vegetable oil",
+    "aliases_ru": [
+      "масло",
+      "масло растительное"
+    ],
+    "aliases_en": [
+      "oil",
+      "vegetable oil"
+    ],
+    "kcal_per_100g": 884,
+    "protein_per_100g": 0,
+    "fat_per_100g": 100,
+    "carbs_per_100g": 0,
+    "category": "fat",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "manual"
   },
   {
-  "id": "greens",
-  "name_ru": "зелень",
-  "name_en": "greens",
-  "aliases_ru": ["укроп", "петрушка", "зелень свежая"],
-  "aliases_en": ["herbs", "fresh herbs", "dill", "parsley"],
-  "kcal_per_100g": 30,
-  "protein_per_100g": 2.5,
-  "fat_per_100g": 0.5,
-  "carbs_per_100g": 4.0,
-  "category": "ingredient",
-  "region": ["ru", "eu"],
-  "unit": "g",
-  "source": "manual"
+    "id": "greens",
+    "name_ru": "зелень",
+    "name_en": "greens",
+    "aliases_ru": [
+      "укроп",
+      "петрушка",
+      "зелень свежая"
+    ],
+    "aliases_en": [
+      "herbs",
+      "fresh herbs",
+      "dill",
+      "parsley"
+    ],
+    "kcal_per_100g": 30,
+    "protein_per_100g": 2.5,
+    "fat_per_100g": 0.5,
+    "carbs_per_100g": 4.0,
+    "category": "ingredient",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "manual"
+  },
+  {
+    "id": "bay_leaf",
+    "name_ru": "лавровый лист",
+    "name_en": "bay leaf",
+    "aliases_ru": [
+      "лаврушка"
+    ],
+    "aliases_en": [
+      "bay leaves"
+    ],
+    "kcal_per_100g": 313,
+    "protein_per_100g": 7.61,
+    "fat_per_100g": 8.36,
+    "carbs_per_100g": 75.0,
+    "category": "spice",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "tomato_paste",
+    "name_ru": "томатная паста",
+    "name_en": "tomato paste",
+    "aliases_ru": [
+      "томат"
+    ],
+    "aliases_en": [
+      "tomato sauce"
+    ],
+    "kcal_per_100g": 76.0,
+    "protein_per_100g": 3.03,
+    "fat_per_100g": 0.0,
+    "carbs_per_100g": 18.2,
+    "category": "sauce",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "cabbage_soup",
+    "name_ru": "щи",
+    "name_en": "cabbage soup",
+    "aliases_ru": [
+      "щи домашние"
+    ],
+    "aliases_en": [
+      "cabbage soups"
+    ],
+    "kcal_per_100g": 65.0,
+    "protein_per_100g": 1.1,
+    "fat_per_100g": 0.5,
+    "carbs_per_100g": 2.4,
+    "category": "soup",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "omelet",
+    "name_ru": "омлет",
+    "name_en": "omelet",
+    "aliases_ru": [
+      "омлеты"
+    ],
+    "aliases_en": [
+      "omelets"
+    ],
+    "kcal_per_100g": 25,
+    "protein_per_100g": 1.1,
+    "fat_per_100g": 0.23,
+    "carbs_per_100g": 5.49,
+    "category": "breakfast",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "boiled_buckwheat",
+    "name_ru": "гречка отварная",
+    "name_en": "boiled buckwheat",
+    "aliases_ru": [
+      "греча"
+    ],
+    "aliases_en": [
+      "buckwheat"
+    ],
+    "kcal_per_100g": 343,
+    "protein_per_100g": 13.2,
+    "fat_per_100g": 3.4,
+    "carbs_per_100g": 71.5,
+    "category": "grain",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "boiled_rice",
+    "name_ru": "рис отварной",
+    "name_en": "boiled rice",
+    "aliases_ru": [
+      "вареный рис"
+    ],
+    "aliases_en": [
+      "rice"
+    ],
+    "kcal_per_100g": 318,
+    "protein_per_100g": 13.5,
+    "fat_per_100g": 22.01,
+    "carbs_per_100g": 21.26,
+    "category": "grain",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "mushroom_soup",
+    "name_ru": "грибной суп",
+    "name_en": "mushroom soup",
+    "aliases_ru": [
+      "суп грибной",
+      "суп_с_грибами"
+    ],
+    "aliases_en": [
+      "mushroom soups"
+    ],
+    "kcal_per_100g": 74,
+    "protein_per_100g": 2.1,
+    "fat_per_100g": 4.76,
+    "carbs_per_100g": 5.7,
+    "category": "soup",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "oregano",
+    "name_ru": "сушёные орегано",
+    "name_en": "oregano",
+    "aliases_ru": [
+      "орегано"
+    ],
+    "aliases_en": [
+      "oregano"
+    ],
+    "kcal_per_100g": 1110.0,
+    "protein_per_100g": 9.0,
+    "fat_per_100g": 4.28,
+    "carbs_per_100g": 68.9,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "lemon_juice",
+    "name_ru": "лимонный сок",
+    "name_en": "lemon juice",
+    "aliases_ru": [
+      "лимонный сок"
+    ],
+    "aliases_en": [
+      "lemon juice"
+    ],
+    "kcal_per_100g": 22.0,
+    "protein_per_100g": 0.35,
+    "fat_per_100g": 0.24,
+    "carbs_per_100g": 6.9,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "rosemary",
+    "name_ru": "розмарин",
+    "name_en": "rosemary",
+    "aliases_ru": [
+      "розмарин"
+    ],
+    "aliases_en": [
+      "rosemary"
+    ],
+    "kcal_per_100g": 131,
+    "protein_per_100g": 3.31,
+    "fat_per_100g": 5.86,
+    "carbs_per_100g": 20.7,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "thyme",
+    "name_ru": "тимьян",
+    "name_en": "thyme",
+    "aliases_ru": [
+      "тимьян"
+    ],
+    "aliases_en": [
+      "thyme"
+    ],
+    "kcal_per_100g": 101,
+    "protein_per_100g": 5.56,
+    "fat_per_100g": 1.68,
+    "carbs_per_100g": 24.4,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "cherry_tomato",
+    "name_ru": "помидоры черри",
+    "name_en": "cherry tomato",
+    "aliases_ru": [
+      "помидоры черри"
+    ],
+    "aliases_en": [
+      "cherry tomato"
+    ],
+    "kcal_per_100g": 71,
+    "protein_per_100g": 1.04,
+    "fat_per_100g": 0.19,
+    "carbs_per_100g": 16.16,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "okroshka",
+    "name_ru": "окрошка",
+    "name_en": "okroshka",
+    "aliases_ru": [
+      "окрошка на кефире",
+      "окрошка на квасе"
+    ],
+    "aliases_en": [
+      "okroshka",
+      "cold soup"
+    ],
+    "kcal_per_100g": 68,
+    "protein_per_100g": 3.5,
+    "fat_per_100g": 3.8,
+    "carbs_per_100g": 5.0,
+    "category": "soup",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "manual",
+    "usda_id": null,
+    "lookup_count": 1,
+    "migrated": true
+  },
+  {
+    "id": "lamb",
+    "name_ru": "баранина",
+    "name_en": "lamb",
+    "aliases_ru": [
+      "баранина",
+      "баранина на кости",
+      "баранины",
+      "свежая баранина"
+    ],
+    "aliases_en": [
+      "lambs"
+    ],
+    "kcal_per_100g": 264,
+    "protein_per_100g": 27.36,
+    "fat_per_100g": 16.27,
+    "carbs_per_100g": 0,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "leaf_lettuce",
+    "name_ru": "салат листовой",
+    "name_en": "leaf lettuce",
+    "aliases_ru": [
+      "салат листовой",
+      "листовой салат",
+      "зелёный салат",
+      "зеленый салат",
+      "салатные листья",
+      "листья салата",
+      "латук"
+    ],
+    "aliases_en": [
+      "leaf lettuce",
+      "lettuce",
+      "green lettuce"
+    ],
+    "kcal_per_100g": 18,
+    "protein_per_100g": 1.7,
+    "fat_per_100g": 0.3,
+    "carbs_per_100g": 2.2,
+    "category": "vegetable",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "manual"
+  },
+  {
+    "id": "champignon_mushroom",
+    "name_ru": "шампиньон",
+    "name_en": "champignon mushroom",
+    "aliases_ru": [
+      "шампиньон",
+      "шампиньоны"
+    ],
+    "aliases_en": [
+      "champignon mushrooms"
+    ],
+    "kcal_per_100g": 222,
+    "protein_per_100g": 4.63,
+    "fat_per_100g": 12.91,
+    "carbs_per_100g": 21.9,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "fish_sauce",
+    "name_ru": "рыбный соус",
+    "name_en": "fish sauce",
+    "aliases_ru": [
+      "рыбный соус",
+      "рыбные соусы"
+    ],
+    "aliases_en": [
+      "fish sauces"
+    ],
+    "kcal_per_100g": 35,
+    "protein_per_100g": 5.06,
+    "fat_per_100g": 0.01,
+    "carbs_per_100g": 3.64,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "lime_juice",
+    "name_ru": "сок лайма",
+    "name_en": "lime juice",
+    "aliases_ru": [
+      "сок лайма",
+      "соки лайма"
+    ],
+    "aliases_en": [
+      "lime juices"
+    ],
+    "kcal_per_100g": 25.0,
+    "protein_per_100g": 0.42,
+    "fat_per_100g": 0.07,
+    "carbs_per_100g": 8.42,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "starch",
+    "name_ru": "крахмал",
+    "name_en": "starch",
+    "aliases_ru": [
+      "крахмал"
+    ],
+    "aliases_en": [
+      "starches"
+    ],
+    "kcal_per_100g": 1000.0,
+    "protein_per_100g": 3.34,
+    "fat_per_100g": 2.65,
+    "carbs_per_100g": 50.5,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "fish_soup",
+    "name_ru": "Уха",
+    "name_en": "fish soup",
+    "aliases_ru": [
+      "уха",
+      "рыбный суп",
+      "суп рыбный",
+      "суп с рыбой",
+      "суп из рыбы"
+    ],
+    "aliases_en": [
+      "fish soup",
+      "fish soups",
+      "fish chowder",
+      "fish broth"
+    ],
+    "kcal_per_100g": 45.0,
+    "protein_per_100g": 4.0,
+    "fat_per_100g": 2.0,
+    "carbs_per_100g": 5.0,
+    "category": "dish",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "ai_review"
+  },
+  {
+    "id": "greek_salad",
+    "name_ru": "греческий салат",
+    "name_en": "greek salad",
+    "aliases_ru": [
+      "греческие салаты"
+    ],
+    "aliases_en": [
+      "greek salads"
+    ],
+    "kcal_per_100g": 90.0,
+    "protein_per_100g": 3.0,
+    "fat_per_100g": 6.5,
+    "carbs_per_100g": 4.0,
+    "category": "dish",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "ai_review"
+  },
+  {
+    "id": "khachapuri",
+    "name_ru": "хачапури",
+    "name_en": "khachapuri",
+    "aliases_ru": [
+      "хачапури"
+    ],
+    "aliases_en": [
+      "khachapuri",
+      "georgian cheese bread",
+      "cheese bread"
+    ],
+    "kcal_per_100g": 250.0,
+    "protein_per_100g": 10.0,
+    "fat_per_100g": 15.0,
+    "carbs_per_100g": 25.0,
+    "category": "dish",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "ai_review"
+  },
+  {
+    "id": "pizza_margherita",
+    "name_ru": "пицца маргарита",
+    "name_en": "pizza margherita",
+    "aliases_ru": [
+      "пицца маргарита",
+      "маргарита",
+      "пиццы маргариты"
+    ],
+    "aliases_en": [
+      "pizza margherita",
+      "margherita pizza"
+    ],
+    "kcal_per_100g": 250.0,
+    "protein_per_100g": 10.0,
+    "fat_per_100g": 15.0,
+    "carbs_per_100g": 30.0,
+    "category": "dish",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "ai_review"
+  },
+  {
+    "id": "flour",
+    "name_ru": "мука",
+    "name_en": "flour",
+    "aliases_ru": [
+      "мука"
+    ],
+    "aliases_en": [
+      "flour"
+    ],
+    "kcal_per_100g": 357,
+    "protein_per_100g": 0.3,
+    "fat_per_100g": 0.1,
+    "carbs_per_100g": 88.2,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "vinegar",
+    "name_ru": "уксус",
+    "name_en": "vinegar",
+    "aliases_ru": [
+      "уксус"
+    ],
+    "aliases_en": [
+      "vinegar"
+    ],
+    "kcal_per_100g": 21,
+    "protein_per_100g": 0,
+    "fat_per_100g": 0,
+    "carbs_per_100g": 0.93,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "grape_leaf",
+    "name_ru": "виноградный лист",
+    "name_en": "grape leaf",
+    "aliases_ru": [
+      "виноградный лист",
+      "лист винограда",
+      "листья винограда",
+      "виноградные листья",
+      "листы винограда"
+    ],
+    "aliases_en": [
+      "grape leaf",
+      "vine leaves",
+      "grapevine leaves"
+    ],
+    "kcal_per_100g": 313,
+    "protein_per_100g": 7.61,
+    "fat_per_100g": 8.36,
+    "carbs_per_100g": 75.0,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "cumin",
+    "name_ru": "зира",
+    "name_en": "cumin",
+    "aliases_ru": [
+      "зира"
+    ],
+    "aliases_en": [
+      "cumin"
+    ],
+    "kcal_per_100g": 1570.0,
+    "protein_per_100g": 17.8,
+    "fat_per_100g": 22.3,
+    "carbs_per_100g": 44.2,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "barberry",
+    "name_ru": "барбарис",
+    "name_en": "barberry",
+    "aliases_ru": [
+      "барбарис"
+    ],
+    "aliases_en": [
+      "barberry"
+    ],
+    "kcal_per_100g": 368,
+    "protein_per_100g": 7.02,
+    "fat_per_100g": 24.6,
+    "carbs_per_100g": 35.1,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "feta",
+    "name_ru": "фета",
+    "name_en": "feta",
+    "aliases_ru": [
+      "сыр фета",
+      "фета сыр"
+    ],
+    "aliases_en": [
+      "feta",
+      "feta cheese"
+    ],
+    "kcal_per_100g": 1110.0,
+    "protein_per_100g": 14.2,
+    "fat_per_100g": 21.5,
+    "carbs_per_100g": 3.88,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "бульон",
+    "name_ru": "бульон",
+    "name_en": "broth",
+    "aliases_ru": [
+      "мясной бульон",
+      "куриный бульон",
+      "говяжий бульон",
+      "овощной бульон"
+    ],
+    "aliases_en": [
+      "broth",
+      "stock"
+    ],
+    "kcal_per_100g": 10,
+    "protein_per_100g": 1.5,
+    "fat_per_100g": 0.5,
+    "carbs_per_100g": 0.0,
+    "category": "broth",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "manual",
+    "usda_id": null,
+    "lookup_count": 0,
+    "migrated": true
+  },
+  {
+    "id": "фарш",
+    "name_ru": "фарш",
+    "name_en": "minced meat",
+    "aliases_ru": [
+      "мясной фарш"
+    ],
+    "aliases_en": [
+      "ground meat",
+      "minced meat"
+    ],
+    "kcal_per_100g": 250,
+    "protein_per_100g": 17,
+    "fat_per_100g": 20,
+    "carbs_per_100g": 0,
+    "category": "meat",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "manual",
+    "usda_id": null,
+    "lookup_count": 0,
+    "migrated": true
+  },
+  {
+    "id": "radish",
+    "name_ru": "редис",
+    "name_en": "radish",
+    "aliases_ru": [
+      "редис"
+    ],
+    "aliases_en": [
+      "radish"
+    ],
+    "kcal_per_100g": 16,
+    "protein_per_100g": 0.68,
+    "fat_per_100g": 0.1,
+    "carbs_per_100g": 3.4,
+    "category": "",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "boiled_sausage",
+    "name_ru": "колбаса варёная",
+    "name_en": "boiled sausage",
+    "aliases_ru": [
+      "варёная колбаса",
+      "вареная колбаса",
+      "колбаса вареная",
+      "докторская",
+      "докторская колбаса"
+    ],
+    "aliases_en": [
+      "boiled sausage",
+      "cooked sausage"
+    ],
+    "kcal_per_100g": 257,
+    "protein_per_100g": 12.8,
+    "fat_per_100g": 22.2,
+    "carbs_per_100g": 1.5,
+    "category": "meat",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "bread_kvass",
+    "name_ru": "квас хлебный",
+    "name_en": "bread kvass",
+    "aliases_ru": [
+      "квас",
+      "хлебный квас"
+    ],
+    "aliases_en": [
+      "kvass",
+      "bread kvass"
+    ],
+    "kcal_per_100g": 27,
+    "protein_per_100g": 0.2,
+    "fat_per_100g": 0.0,
+    "carbs_per_100g": 5.2,
+    "category": "beverages",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "local"
+  },
+  {
+    "id": "lula_kebab",
+    "name_ru": "люля-кебаб",
+    "name_en": "lula kebab",
+    "aliases_ru": [
+      "люля кебаб",
+      "люлякебаб",
+      "люля-кебаб"
+    ],
+    "aliases_en": [
+      "lyulya kebab",
+      "lule kebab",
+      "lula-kebab",
+      "lyulya-kebab"
+    ],
+    "kcal_per_100g": 234.7,
+    "protein_per_100g": 15.8,
+    "fat_per_100g": 18.2,
+    "carbs_per_100g": 0.9,
+    "category": "dish",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "manual_review"
   }
 ]
