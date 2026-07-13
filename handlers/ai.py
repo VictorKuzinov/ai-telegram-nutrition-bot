@@ -268,6 +268,9 @@ async def weight_handler(
         return
 
     total, not_found = calculate_nutrition(parsed_ingredients)
+    print("PARSED INGREDIENTS:", parsed_ingredients)
+    print("TOTAL:", total)
+    print("NOT FOUND:", not_found)
 
     if not_found:
 

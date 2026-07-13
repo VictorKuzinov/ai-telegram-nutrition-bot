@@ -38,17 +38,36 @@ from states import DiaryForm
 
 router = Router()
 
+DIARY_MENU_ACTIONS = {
+    "🍽 Сегодня",
+    "➕ Добавить",
+    "🗑 Удалить",
+    "✏️ Изменить",
+    "🔥 Остаток",
+    "📅 История",
+    "📊 Статистика",
+    "⬅️ Назад",
+    "⬅️ К дневнику",
+}
+
+
+async def state_reset(state: FSMContext) -> None:
+    await state.clear()
+
 @router.message(F.text == "📖 Дневник")
 async def diary_menu_handler(
     message: Message,
+    state: FSMContext
 ) -> None:
+    await state_reset(state)
     await diary_follow_handler(message)
 
 @router.message(F.text == "⬅️ Назад")
 async def back_to_main_menu_handler(
     message: Message,
+    state: FSMContext
 ) -> None:
-
+    await state_reset(state)
     await message.answer(
         "Главное меню:",
         reply_markup=main_menu_keyboard,
@@ -57,14 +76,17 @@ async def back_to_main_menu_handler(
 @router.message(F.text == "⬅️ К дневнику")
 async def back_to_diary_menu_handler(
     message: Message,
+    state: FSMContext
 ) -> None:
-
+    await state_reset(state)
     await message.answer(
         "Меню сегодня:",
         reply_markup=diary_menu_keyboard,
     )
 
-async def diary_follow_handler(message: Message,) -> None:
+async def diary_follow_handler(
+    message: Message,
+) -> None:
 
     await message.answer(
         "Раздел дневника питания:",
@@ -76,7 +98,7 @@ async def today_eaten_diary_handler(
     message: Message,
     state: FSMContext,
 ) -> None:
-
+    await state_reset(state)
     await message.answer("Дневник питания:\n🍽 Сегодня")
     telegram_id = message.from_user.id
     profile = get_user_profile(message.from_user.id)
@@ -86,7 +108,7 @@ async def today_eaten_diary_handler(
     results = calculate_profile_results(profile)
     total_energy = results["total_energy"]
     foods = get_today_food_logs(telegram_id)
-    if len(foods) == 0:
+    if not foods:
         summary = (
                 "Ваш журнал пока пуст.\n"
                 + "-" * 10 +
@@ -100,42 +122,43 @@ async def today_eaten_diary_handler(
             reply_markup=change_diary_keyboard,
         )
         return
-    else:
-        results = calculate_profile_results(profile)
-        total_energy = results["total_energy"]
-        log_map = {}
-        eaten = 0
-        answer = ""
-        for index, food in enumerate(foods, start=1):
-            eaten += food.kcal
-            log_map[str(index)] = food.id
-            answer += f"{index}. {food.food_name} — {food.weight}г.\n"
-            answer += f"🔥 {food.kcal} ккал | 🥩 {food.protein} | "\
-                      f"🧈 {food.fat} | 🍞 {food.carbs}\n"
+    results = calculate_profile_results(profile)
+    total_energy = results["total_energy"]
+    log_map = {}
+    eaten = 0
+    answer = ""
+    for index, food in enumerate(foods, start=1):
+        eaten += food.kcal
+        log_map[str(index)] = food.id
+        answer += f"{index}. {food.food_name} — {food.weight}г.\n"
+        answer += f"🔥 {food.kcal} ккал | 🥩 {food.protein} | "\
+                  f"🧈 {food.fat} | 🍞 {food.carbs}\n"
 
-        await message.answer(answer)
-        await state.update_data(log_map=log_map)
-        summary = ('-' * 10 + f"\n🎯 Текущая цель: "
-            f"{TARGETS[profile.target]['title']}\n"
-            f"🍽 Калорийность: "
-            f"<b>{total_energy}</b> ккал,\n"
-            f"Съедено: <b>{eaten}</b> ккал,\n"
-            f"Осталось: <b>{total_energy - eaten}</b> ккал,\n"
-        )
-        await message.answer(
-            summary,
-            reply_markup=change_diary_keyboard,
-        )
+    await message.answer(answer)
+    await state.update_data(log_map=log_map)
+    summary = ('-' * 10 + f"\n🎯 Текущая цель: "
+        f"{TARGETS[profile.target]['title']}\n"
+        f"🍽 Калорийность: "
+        f"<b>{total_energy}</b> ккал,\n"
+        f"Съедено: <b>{eaten}</b> ккал,\n"
+        f"Осталось: <b>{total_energy - eaten}</b> ккал,\n"
+    )
+    await message.answer(
+        summary,
+        reply_markup=change_diary_keyboard,
+    )
 
 @router.message(F.text == "➕ Добавить")
 async def added_dish_diary_handler(
         message: Message,
         state: FSMContext,
 ) -> None:
+    await state_reset(state)
     await state.set_state(DiaryForm.waiting_name)
     await message.answer("Введите название блюда.")
 
-@router.message(DiaryForm.waiting_name)
+@router.message(DiaryForm.waiting_name,
+                ~F.text.in_(DIARY_MENU_ACTIONS),)
 async def dish_name_handler(
     message: Message,
     state: FSMContext,
@@ -150,7 +173,8 @@ async def dish_name_handler(
     await state.set_state(DiaryForm.waiting_weight)
     await message.answer("Введите вес блюда в граммах.")
 
-@router.message(DiaryForm.waiting_weight)
+@router.message(DiaryForm.waiting_weight,
+                ~F.text.in_(DIARY_MENU_ACTIONS),)
 async def dish_weight_handler(
     message: Message,
     state: FSMContext,
@@ -198,6 +222,67 @@ async def dish_weight_handler(
             )
             await state.clear()
             return
+        portion = calculate_portion_from_ai_estimate(estimate, weight)
+        print(portion)
+
+        profile = get_user_profile(message.from_user.id)
+
+        if profile is None:
+            await message.answer("Профиль пользователя не найден.")
+            await state.clear()
+            return
+
+        food_log_data = {
+            "user_id": profile.id,
+            "food_name": portion["name_ru"],
+            "weight": portion["weight_g"],
+            "kcal": portion["kcal"],
+            "protein": portion["protein"],
+            "fat": portion["fat"],
+            "carbs": portion["carbs"],
+            "source": "ai_estimate",
+        }
+
+        create_food_log(food_log_data)
+        dish_per_100g = {
+            "name_ru": estimate.name_ru,
+            "kcal_per_100g": estimate.nutrition_per_100g.kcal,
+            "protein_per_100g": estimate.nutrition_per_100g.protein,
+            "fat_per_100g": estimate.nutrition_per_100g.fat,
+            "carbs_per_100g": estimate.nutrition_per_100g.carbs,
+            "source": "ai_estimate",
+            "needs_review": True,
+            "status": "pending",
+        }
+
+        save_review_dish(dish_per_100g)
+
+        total_for_footer = {
+            "weight": portion["weight_g"],
+            "kcal": portion["kcal"],
+            "protein": portion["protein"],
+            "fat": portion["fat"],
+            "carbs": portion["carbs"],
+            "kcal_100g": estimate.nutrition_per_100g.kcal,
+            "protein_100g": estimate.nutrition_per_100g.protein,
+            "fat_100g": estimate.nutrition_per_100g.fat,
+            "carbs_100g": estimate.nutrition_per_100g.carbs,
+        }
+
+        await message.answer(
+            f"✅ Блюдо сохранено в Ваш дневник:\n\n"
+            f"🍽 {food_log_data['food_name']}\n"
+            f"⚖️ Вес: {food_log_data['weight']} г"
+        )
+
+        await message.answer(
+            "⚠️ КБЖУ рассчитано ИИ приблизительно.\n\n"
+            + footer(total_for_footer, "recipe"),
+            reply_markup=diary_menu_keyboard,
+        )
+
+        await state.clear()
+        return
 
     profile = get_user_profile(message.from_user.id)
 
@@ -216,20 +301,16 @@ async def dish_weight_handler(
         "carbs": total["carbs"],
         "source": "manual",
     }
-
     create_food_log(food_log_data)
-
     await message.answer(
         f"✅ Блюдо сохранено в Ваш дневник:\n\n"
         f"🍽 {food_log_data['food_name']}\n"
         f"⚖️ Вес: {food_log_data['weight']} г"
     )
-
     await message.answer(
         footer(total, "recipe"),
         reply_markup=diary_menu_keyboard,
     )
-
     await state.clear()
 
 @router.message(F.text == "🗑 Удалить")
@@ -240,7 +321,8 @@ async def del_dish_diary_handler(
     await state.set_state(DiaryForm.waiting_delete_number)
     await message.answer("Введите номер блюда, которое удаляем.")
 
-@router.message(DiaryForm.waiting_delete_number)
+@router.message(DiaryForm.waiting_delete_number,
+                ~F.text.in_(DIARY_MENU_ACTIONS),)
 async def dish_handler_delete(
     message: Message,
     state: FSMContext,
@@ -259,8 +341,12 @@ async def dish_handler_delete(
 
     data = await state.get_data()
     log_map = data.get("log_map", {})
-    log_id = log_map.get(str(dish_number))
+    if not data.get("log_map"):
+        await message.answer("Сначала откройте дневник за сегодня.")
+        await state.clear()
+        return
 
+    log_id = log_map.get(str(dish_number))
     if log_id is None:
         await message.answer("Записи с таким номером нет.")
         return
@@ -280,7 +366,8 @@ async def update_dish_diary_handler(
     await message.answer("Введите номер блюда, которое нужно изменить.")
 
 
-@router.message(DiaryForm.waiting_edit_number)
+@router.message(DiaryForm.waiting_edit_number,
+                ~F.text.in_(DIARY_MENU_ACTIONS),)
 async def dish_handler_update(
     message: Message,
     state: FSMContext,
@@ -329,7 +416,8 @@ async def dish_handler_update(
     )
 
 
-@router.message(DiaryForm.waiting_edit_name)
+@router.message(DiaryForm.waiting_edit_name,
+                ~F.text.in_(DIARY_MENU_ACTIONS),)
 async def dish_edit_name_handler(
     message: Message,
     state: FSMContext,
@@ -345,7 +433,8 @@ async def dish_edit_name_handler(
     await message.answer("Введите новый вес блюда в граммах.")
 
 
-@router.message(DiaryForm.waiting_edit_weight)
+@router.message(DiaryForm.waiting_edit_weight,
+                ~F.text.in_(DIARY_MENU_ACTIONS),)
 async def dish_edit_weight_handler(
     message: Message,
     state: FSMContext,
@@ -375,7 +464,7 @@ async def dish_edit_weight_handler(
         ]
     )
 
-    if data['name'] == old_name:
+    if data["name"] == old_name:
         profile = get_user_profile(message.from_user.id)
 
         if profile is None:
@@ -505,17 +594,19 @@ async def dish_edit_weight_handler(
 
 @router.message(F.text == "🔥 Остаток")
 async def remainder_kcal_handler(
-    message: Message
+    message: Message,
+    state: FSMContext,
 ) -> None:
+    await state_reset(state)
     telegram_id = message.from_user.id
     profile = get_user_profile(message.from_user.id)
-    target_title = TARGETS.get(profile.target)["title"]
     if profile is None:
         await message.answer("Профиль пользователя не найден.")
         return
+    target_title = TARGETS.get(profile.target)["title"]
     foods = get_today_food_logs(telegram_id)
     await  message.answer(f"🎯 Ваша цель {target_title}")
-    if len(foods) == 0:
+    if not foods:
         results = calculate_profile_results(profile)
         total_energy = results["total_energy"]
         await message.answer(f"🔥 Осталось: {total_energy} ккал.")
@@ -555,8 +646,11 @@ async def remainder_kcal_handler(
                          reply_markup=diary_menu_keyboard)
 
 @router.message(F.text == "📅 История")
-async def history_day_handler(    message: Message
+async def history_day_handler(
+    message: Message,
+    state: FSMContext,
 ) -> None:
+    await state_reset(state)
     await message.answer("📅 История питания 7 дней:")
     telegram_id = message.from_user.id
     profile = get_user_profile(message.from_user.id)
@@ -564,7 +658,7 @@ async def history_day_handler(    message: Message
         await message.answer("Профиль пользователя не найден.")
         return
     history = get_food_logs_for_period(telegram_id, days=7)
-    if len(history) == 0:
+    if not history:
         await message.answer("Ваша история питания за это период пока пустая.")
         return
     answer = ""
@@ -576,7 +670,11 @@ async def history_day_handler(    message: Message
     await message.answer(answer, reply_markup=diary_menu_keyboard)
 
 @router.message(F.text == "📊 Статистика")
-async def history_day_handler(message: Message, statistic_menu_keyboard=None) -> None:
+async def statistic_menu_handler(
+        message: Message,
+        state: FSMContext,
+) -> None:
+    await state_reset(state)
     await message.answer("📊 Статистика питания",
                          reply_markup=statistics_menu_keyboard)
 
@@ -645,11 +743,3 @@ async def statistic_month_handler(
         message: Message,
 ) -> None:
     await build_statistics_text(message, 30)
-
-@router.message(F.text == "⬅️ К дневнику")
-async def back_to_statistic_menu_handler(
-    message: Message,
-) -> None:
-
-    await message.answer("Меню дневника.",
-                         reply_markup=diary_menu_keyboard)

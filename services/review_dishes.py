@@ -1,5 +1,6 @@
 import json
 import os
+from os.path import join
 from pathlib import Path
 
 import dotenv
@@ -24,6 +25,12 @@ dish_path = DATA_DIR / "review_dishes.json"
 
 API_KEY = os.getenv("USDA_API_KEY")
 
+nutrition_prompts = {
+    "kcal_per_100g": "Введите калории на 100 грамм: ",
+    "protein_per_100g": "Введите белок на 100 грамм: ",
+    "fat_per_100g": "Введите белок на 100 грамм: ",
+    "carbs_per_100g": "Введите углеводы на 100 грамм: ",
+}
 def get_dishes_candidates(path: Path) -> list[dict]:
     data = load_cache(path)
 
@@ -55,6 +62,14 @@ def build_food_from_ai(record: dict) -> dict | None:
         "source": "ai_review",
     }
 
+def input_float(prompt: str) -> float:
+    while True:
+        value = input(prompt).strip()
+        try:
+            return float(value)
+        except ValueError:
+            print("Некорректный ввод числа. Повторите.")
+
 def build_food_from_manual(record: dict) -> dict | None:
     if record is None:
         return None
@@ -67,14 +82,12 @@ def build_food_from_manual(record: dict) -> dict | None:
     print(f"EN название: {name_en}")
 
     while True:
-        record["kcal_per_100g"] = float(input("Введите калории на 100 грамм: ").strip())
-        record["protein_per_100g"] = float(input("Введите белок на 100 грамм: ").strip())
-        record["fat_per_100g"] = float(input("Введите жиры на 100 грамм: ").strip())
-        record["carbs_per_100g"] = float(input("Введите углеводы на 100 грамм: ").strip())
+        for field, prompt in nutrition_prompts.items():
+            record[field] = input_float(prompt)
 
         confirmation = input("Подтвердить? [Y/n]: ").strip().lower()
 
-        if confirmation in ("", "y", "yes", "да", "д"):
+        if confirmation in ("", "y"):
             return {
                 "id": name_en.replace(" ", "_"),
                 "name_ru": record["name_ru"],
@@ -91,7 +104,7 @@ def build_food_from_manual(record: dict) -> dict | None:
                 "source": "manual_review",
             }
 
-        if confirmation in ("n", "no", "нет", "н"):
+        if confirmation == "n":
             print("Пропущено")
             return None
 
@@ -133,31 +146,42 @@ def approve_new_food(record: dict, aliases_index: dict) -> dict | None:
         print(f"EN ед. число: {default_name_en}")
         print(f"EN мн. число: {default_aliases_en}")
 
-        confirmation = input("Подтвердить? [Y/n]: ").strip().lower()
+        action = input(
+            "[Y]-принять/[E]-изменить/[S]-пропустить, выбери действие: "
+        ).strip().lower()
 
-        if confirmation in ("", "y", "yes", "да", "д"):
+        if action == "e":
+            record["aliases_ru"] = [
+                alias.strip()
+                for alias in input("Введите RU алиасы через запятую: ").split(",")
+                if alias.strip()
+            ]
+            record["name_en"] = input("Введите EN ед. число: ").strip().lower()
+
+            record["aliases_en"] = [
+                alias.strip()
+                for alias in input("Введите EN алиасы через запятую: ").split(",")
+                if alias.strip()
+            ]
+            # continue
+        elif action in ("", "y"):
             record["name_en"] = default_name_en
             record["aliases_ru"] = [default_aliases_ru]
             record["aliases_en"] = [default_aliases_en]
-            break
+        elif action == "s":
+            print(f"Блюдо пропущено: {name_ru}")
+            return None
+        else:
+            print("Ввден не корректный символ, попробуйте ещё раз...")
+            continue
 
-        record["aliases_ru"] = [
-            alias.strip()
-            for alias in input("Введите RU алиасы через запятую: ").split(",")
-            if alias.strip()
-        ]
-
-        record["name_en"] = input("Введите EN ед. число: ").strip().lower()
-
-        record["aliases_en"] = [
-            alias.strip()
-            for alias in input("Введите EN алиасы через запятую: ").split(",")
-            if alias.strip()
-        ]
-
+        print(f"По продукту: {name_ru}, вы ввели:")
+        print("RU алиасы:", ", ".join(record['aliases_ru']))
+        print("EN алиасы:", ", ".join(record['aliases_en']))
+        print("EN ед. число:", record["name_en"])
         confirmation = input("Теперь подтвердить? [Y/n]: ").strip().lower()
 
-        if confirmation in ("", "y", "yes", "да", "д"):
+        if confirmation in ("", "y"):
             break
 
     return record

@@ -3322,11 +3322,11 @@
     "name_ru": "колбаса варёная",
     "name_en": "boiled sausage",
     "aliases_ru": [
-    "варёная колбаса",
-    "вареная колбаса",
-    "колбаса вареная",
-    "докторская",
-    "докторская колбаса"
+      "варёная колбаса",
+      "вареная колбаса",
+      "колбаса вареная",
+      "докторская",
+      "докторская колбаса"
     ],
     "aliases_en": [
       "boiled sausage",
@@ -3367,5 +3367,32 @@
     ],
     "unit": "g",
     "source": "local"
+  },
+  {
+    "id": "lula_kebab",
+    "name_ru": "люля-кебаб",
+    "name_en": "lula kebab",
+    "aliases_ru": [
+      "люля кебаб",
+      "люлякебаб",
+      "люля-кебаб"
+    ],
+    "aliases_en": [
+      "lyulya kebab",
+      "lule kebab",
+      "lula-kebab",
+      "lyulya-kebab"
+    ],
+    "kcal_per_100g": 234.7,
+    "protein_per_100g": 15.8,
+    "fat_per_100g": 18.2,
+    "carbs_per_100g": 0.9,
+    "category": "dish",
+    "region": [
+      "ru",
+      "eu"
+    ],
+    "unit": "g",
+    "source": "manual_review"
   }
 ]
