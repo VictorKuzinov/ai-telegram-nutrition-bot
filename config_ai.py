@@ -515,27 +515,6 @@ def generate_user_prompt_repeat_recipe_ingredientd(content: str, errors: list[st
     return user_prompt
 
 def generate_user_prompt_repeat_recipe(recipe_text) -> str:
-    # user_prompt = f"""
-    # Название блюда:
-    # {title}
-    #
-    # Ингредиенты:
-    #
-    # {ingredients}
-    #
-    # Напиши ТОЛЬКО раздел "Приготовление".
-    #
-    # Не меняй ингредиенты.
-    #
-    # Не используй:
-    # - по вкусу
-    # - ложки
-    # - стаканы
-    #
-    # Не добавляй калорийность.
-    #
-    # Верни только раздел "Приготовление".
-    # """
     user_prompt = f"""
         Исходный рецепт:
         {recipe_text}

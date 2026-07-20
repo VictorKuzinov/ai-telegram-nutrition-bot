@@ -4,7 +4,8 @@ from config_ai import PROMPT_GIGACHAT
 from services.image_utils import image_to_data_url
 
 LOCAL_URL = "http://127.0.0.1:8080/v1/chat/completions"
-LOCAL_MODEL = "qwen2.5-vl-local"
+LOCAL_MODEL = "gemma-4-12B"
+LOCAL_TIMEOUT = 600
 
 
 def send_local_request(image_data_url: str) -> requests.Response:
@@ -28,14 +29,14 @@ def send_local_request(image_data_url: str) -> requests.Response:
             }
         ],
         "temperature": 0,
-        "max_tokens": 300,
+        "max_tokens": 500,
     }
 
     return requests.post(
         LOCAL_URL,
         headers={"Content-Type": "application/json"},
         json=payload,
-        timeout=120,
+        timeout=LOCAL_TIMEOUT,
     )
 
 
@@ -66,6 +67,13 @@ def call_local_vision(image_path: str) -> str | None:
         print("LOCAL ответ без choices:")
         print(data)
         return None
+
+    message_data = data["choices"][0]["message"]
+
+    print("LOCAL MESSAGE:", message_data)
+    print("CONTENT:", repr(message_data.get("content")))
+    print("REASONING:", repr(message_data.get("reasoning_content")))
+    print("FINISH REASON:", data["choices"][0].get("finish_reason"))
 
     content = data["choices"][0]["message"]["content"]
     print("LOCAL CONTENT:")
@@ -98,7 +106,7 @@ def call_local_chat(
         response = requests.post(
             LOCAL_URL,
             json=payload,
-            timeout=120,
+            timeout=LOCAL_TIMEOUT,
         )
         response.raise_for_status()
     except requests.RequestException as error:

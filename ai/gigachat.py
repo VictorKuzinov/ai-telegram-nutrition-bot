@@ -289,7 +289,8 @@ def send_gigachat_request(
     return response
 
 
-def call_gigachat_vision(image_path: str, token: str) -> str | None:
+def call_gigachat_vision(image_path: str) -> str | None:
+    token = get_access_token()
     file_id = upload_gigachat_file(image_path, token)
 
     if not file_id:

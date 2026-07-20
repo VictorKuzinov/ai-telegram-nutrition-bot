@@ -8,7 +8,7 @@ from aiogram.types import Message, CallbackQuery
 from ai.gigachat import (
     call_chat_with_fallback,
     process_recipe_ai_text,
-    repair_recipe,
+    repair_recipe, call_gigachat_vision,
 )
 from ai.local_model_vl import call_local_vision
 from ai.openrouter import call_openrouter_vision
@@ -71,6 +71,18 @@ UPLOAD_DIR = Path("picture/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def call_vision_with_fallback(image_path):
+
+    content = call_openrouter_vision(image_path)
+    if content:
+        return content
+
+    content = call_gigachat_vision(image_path)
+    if content:
+        return content
+
+    return call_local_vision(image_path)
+
 @router.message(F.text == "🤖 AI функции")
 async def ai_menu_handler(
     message: Message,
@@ -122,10 +134,7 @@ async def process_food_photo_handler(
     await message.answer("Фото получил, начинаю распознавание...")
 
     try:
-        content = call_openrouter_vision(str(image_path))
-
-        if not content:
-            content = call_local_vision(str(image_path))
+        content = call_vision_with_fallback(str(image_path))
 
     finally:
         try:
